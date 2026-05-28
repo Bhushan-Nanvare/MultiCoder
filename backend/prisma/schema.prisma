@@ -1,0 +1,89 @@
+// Prisma schema for MultiCoder. Phase 2A introduces User, Room, and Snapshot
+// tables; Phase 2B+ will add OAuth identity fields and review history.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  githubId    String?  @unique
+  displayName String
+  username    String   @unique
+  email       String?  @unique
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms     Room[]
+  snapshots Snapshot[]
+  snippets  Snippet[]
+
+  @@map("users")
+}
+
+model Room {
+  id        String   @id
+  name      String
+  language  String
+  ownerId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  snapshots Snapshot[]
+
+  @@index([ownerId])
+  @@map("rooms")
+}
+
+model Snapshot {
+  id        String   @id @default(cuid())
+  roomId    String
+  content   String
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  room   Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([roomId, createdAt])
+  @@map("snapshots")
+}
+
+// --- Plagiarism detection (Phase 3B) ---
+// A Snippet is a normalized code submission whose winnowing fingerprints are
+// stored separately so we can efficiently find candidates sharing any hash.
+model Snippet {
+  id              String   @id @default(cuid())
+  ownerId         String?
+  language        String
+  code            String
+  fingerprintCount Int
+  createdAt       DateTime @default(now())
+
+  owner        User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  fingerprints Fingerprint[]
+
+  @@index([ownerId])
+  @@index([language])
+  @@map("snippets")
+}
+
+model Fingerprint {
+  id        BigInt @id @default(autoincrement())
+  snippetId String
+  hash      String
+
+  snippet Snippet @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+
+  @@index([hash])
+  @@index([snippetId])
+  @@map("fingerprints")
+}

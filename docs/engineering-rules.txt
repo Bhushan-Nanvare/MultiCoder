@@ -1,0 +1,121 @@
+Rules I'm setting for myself before I start
+===========================================
+
+Not formal, just things I want to stick to. Most of these are reactions
+to mistakes I made on past projects. Writing them down so I don't have
+to relearn them when I'm tired at 1am.
+
+
+Architecture
+------------
+
+1. Repo / service / route split on the backend. Routes only validate
+   input and call into services. Services hold the logic. Repos do
+   the DB calls. No skipping layers.
+   Why: last project I let routes touch Prisma directly. Ended up with
+   auth-check copy-pasted across 4 route files. Pain to refactor.
+
+2. Repository is an interface, not a concrete class. Even when there's
+   only one impl.
+   Why: 10 extra lines now, lets me swap Postgres for something else
+   later without touching services or routes. Feels over-engineered
+   for a small project. doing it anyway.
+
+3. No in-memory state once the DB lands. No Maps that "just hold the
+   data for now."
+   Why: got bitten by a Map-backed thing in dev that silently lost data
+   on every restart. spent an hour wondering why my test users vanished.
+
+
+Validation
+----------
+
+4. zod for every external input. env config, request bodies, query
+   params, AI provider responses. if it crosses the boundary, parse it.
+
+5. Env vars validated at startup. if something is missing, crash with
+   a clear error naming the missing var. no silent undefined three
+   hours into running.
+
+
+Errors
+------
+
+6. One error shape across the whole API:
+   { error: { code, message, details? } }
+   Frontend doesn't have to special-case anything. code is a string
+   enum (NOT_FOUND, VALIDATION_FAILED, RATE_LIMITED, etc).
+
+7. AppError + subclasses for known cases. throw them from anywhere,
+   the error handler middleware turns them into the right HTTP status.
+   ZodError gets auto-converted to 400.
+
+8. Never expose stack traces to clients in production. log them
+   server-side with a request id, return a generic message + the
+   request id to the client.
+
+
+Don'ts
+------
+
+9. No placeholders or "TODO: implement later" in committed code. if
+   it's not done, don't commit it. functions that return hardcoded
+   values are not ok.
+   Exception: a // TODO comment marking a known edge case is fine,
+   as long as the main path works.
+
+10. No console.log in committed code. use the logger. easy to forget
+    and ship it otherwise.
+
+11. No `any` in TypeScript unless I add a comment explaining why.
+    most uses of any are laziness not necessity.
+
+12. No magic numbers. 5000, 30000, 64 * 1024 — they all go in
+    constants/. easier to find, easier to tune.
+
+
+Logging / security
+------------------
+
+13. Logger redacts authorization, cookie, password, token. if those
+    keys appear in any log object, replace the value.
+
+14. Helmet + CORS on from day one. CORS allow-list driven by env var.
+    never `cors({ origin: '*' })` with credentials.
+
+15. Graceful shutdown. SIGINT/SIGTERM -> stop accepting new connections,
+    finish in-flight ones, close DB pool, exit. Render and Docker both
+    expect this.
+
+
+Frontend rules
+--------------
+
+16. Auth state in one Context, three explicit statuses: loading,
+    authenticated, unauthenticated. the loading state is mandatory.
+    skipping it makes every page refresh flash through the unauth UI
+    for one render. ugly and confusing.
+
+17. One typed API client module. no fetch() calls scattered in
+    components. every call goes through it with credentials:'include'.
+
+18. Don't fight Monaco. use its event model as-is. if something is
+    hard, the answer is usually to read the API docs, not to add a
+    workaround.
+
+
+Misc
+----
+
+19. Path aliases: @/foo always means src/foo. same convention on
+    backend and frontend. imports look identical on both sides.
+
+20. Comments only when the WHY isn't obvious. "increment i" doesn't
+    need a comment. "use BigInt because the hash overflows int53"
+    does.
+
+21. One big file is fine. don't split 30 lines across 4 files just to
+    feel architectural. split when there's a real reason to.
+
+22. I'll break any of these if I have to. they're guardrails for me,
+    not laws.

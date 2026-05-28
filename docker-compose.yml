@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: multicoder-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: multicoder
+      POSTGRES_PASSWORD: multicoder
+      POSTGRES_DB: multicoder
+    ports:
+      - "5432:5432"
+    volumes:
+      - multicoder_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U multicoder -d multicoder"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: multicoder-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - multicoder_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  multicoder_pg_data:
+  multicoder_redis_data:

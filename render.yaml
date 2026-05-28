@@ -1,0 +1,48 @@
+# Render Blueprint — one-click backend deploy.
+# Drop this file at the root of your GitHub repo and create a Blueprint
+# instance in the Render dashboard. The frontend deploys separately on Vercel.
+#
+# After the first deploy, you MUST set every "sync: false" env var by hand
+# in the Render dashboard, and update GITHUB_CLIENT_*, OAUTH_CALLBACK_URL,
+# CORS_ORIGINS, and FRONTEND_URL with the real production URLs.
+
+services:
+  - type: web
+    name: multicoder-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_CALLBACK_URL
+        sync: false
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
