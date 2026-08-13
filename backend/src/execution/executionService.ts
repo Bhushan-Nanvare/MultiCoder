@@ -90,7 +90,7 @@ export class ExecutionService {
     const response = await this.piston.execute({
       language: mapping.pistonLanguage,
       version,
-      file: { name: mapping.fileName, content: request.code },
+      files: [{ name: mapping.fileName, content: request.code }],
       stdin: request.stdin,
     });
     const elapsedMs = Date.now() - startedAt;

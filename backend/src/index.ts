@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   const authService = new AuthService(userRepository);
   const requireAuth = buildRequireAuth(authService);
 
-  const pistonClient = new PistonClient();
+  const pistonClient = new PistonClient(config.pistonBaseUrl);
   const executionService = new ExecutionService(pistonClient);
   executionService.initialize().catch((err) => {
     logger.warn({ err }, 'Piston runtime resolution failed; will retry on first request');

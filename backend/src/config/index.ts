@@ -28,6 +28,7 @@ const envSchema = z.object({
   AI_PROVIDER: z.enum(['gemini']).default('gemini'),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default('gemini-2.0-flash-exp'),
+  PISTON_BASE_URL: z.string().url().default('http://localhost:2000/api/v2'),
 });
 
 export type AppConfig = {
@@ -46,6 +47,7 @@ export type AppConfig = {
   aiProvider: 'gemini';
   geminiApiKey: string;
   geminiModel: string;
+  pistonBaseUrl: string;
   isProduction: boolean;
   isDevelopment: boolean;
 };
@@ -77,6 +79,7 @@ export const config: AppConfig = {
   aiProvider: env.AI_PROVIDER,
   geminiApiKey: env.GEMINI_API_KEY,
   geminiModel: env.GEMINI_MODEL,
+  pistonBaseUrl: env.PISTON_BASE_URL,
   isProduction: env.NODE_ENV === 'production',
   isDevelopment: env.NODE_ENV === 'development',
 };

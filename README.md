@@ -105,6 +105,14 @@ npx prisma migrate dev
 
 ### 4. Start both services
 
+Start Piston (code execution sandbox) if you want the Run button to work:
+
+```bash
+docker compose up -d piston
+# First start installs language runtimes — wait ~60s, then verify:
+curl http://localhost:2000/api/v2/runtimes
+```
+
 In two terminals:
 
 ```bash
@@ -135,6 +143,7 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `AI_PROVIDER` | no | `gemini` | Only `gemini` is shipped; provider abstraction lives in `src/ai/providerFactory.ts` |
 | `GEMINI_API_KEY` | **yes** | — | From aistudio.google.com/app/apikey |
 | `GEMINI_MODEL` | no | `gemini-flash-latest` | Pin a specific version if you prefer |
+| `PISTON_BASE_URL` | no | `http://localhost:2000/api/v2` | Piston v2 API base URL (self-hosted via `docker compose up -d piston`) |
 
 ### Frontend (`frontend/.env`)
 
@@ -168,10 +177,17 @@ All error responses share `{ error: { code, message, details? } }`.
 
 ## Code execution
 
-The execution module is fully built (`src/execution/`) and the frontend has a working Run button. It targets [Piston](https://github.com/engineer-man/piston) for sandboxed multi-language execution. **The public Piston API became whitelist-only on 2026-02-15**, so out of the box `/api/execute` returns `EXECUTION_PROVIDER_ERROR`. To enable execution you have two free options:
+The execution module targets [Piston](https://github.com/engineer-man/piston) for sandboxed multi-language execution. **Self-host Piston locally** (recommended):
 
-- **Self-host Piston via Docker** — add an `engineerman/piston` service to `docker-compose.yml`, set `PISTON_BASE_URL` (in `src/constants/index.ts`) to `http://localhost:2000/api/v2`, restart. Full feature parity, no API keys, no quotas.
-- **Judge0 CE via RapidAPI** — replace `PistonClient` with a Judge0 adapter (~1 file). Free tier caps at 50 executions/day.
+```bash
+docker compose up -d piston
+```
+
+Set `PISTON_BASE_URL=http://localhost:2000/api/v2` in `backend/.env` (this is the default). The Run button sends code to Piston and displays stdout/stderr. The client already uses a multi-file-ready `files[]` payload shape; Stage 4 will send the full project.
+
+The public emkc.org Piston API is whitelist-only — do not rely on it for local dev.
+
+**Alternatives:** Judge0 CE via RapidAPI (~50 runs/day free) — swap `PistonClient` for a Judge0 adapter.
 
 ## Production deployment
 

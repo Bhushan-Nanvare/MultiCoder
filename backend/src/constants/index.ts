@@ -22,7 +22,6 @@ export const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export const SESSION_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // --- Code execution (Piston) ---
-export const PISTON_BASE_URL = 'https://emkc.org/api/v2/piston';
 export const EXECUTION_RUN_TIMEOUT_MS = 5_000;
 export const EXECUTION_COMPILE_TIMEOUT_MS = 10_000;
 export const EXECUTION_MAX_CODE_BYTES = 64 * 1024; // 64 KB source
@@ -51,3 +50,17 @@ export const PLAGIARISM_MAX_CODE_BYTES = 32 * 1024;
 export const PLAGIARISM_MAX_MATCHES_RETURNED = 5;
 export const PLAGIARISM_RATE_LIMIT_MAX = 20;
 export const PLAGIARISM_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+// --- Multi-file project (Plan B) ---
+export const PROJECT_DOCUMENT_VERSION = 2 as const;
+
+/** Default entry file path when a room is created, keyed by room language. */
+export const ENTRY_POINT_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  javascript: 'main.js',
+  python: 'main.py',
+  cpp: 'main.cpp',
+};
+
+export const MAX_FILES_PER_ROOM = 50;
+export const MAX_FILE_BYTES = 64 * 1024; // 64 KB per file
+export const MAX_PROJECT_PATH_LENGTH = 256;

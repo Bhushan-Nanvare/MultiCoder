@@ -31,6 +31,21 @@ services:
       timeout: 3s
       retries: 10
 
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: multicoder-piston
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "2000:2000"
+    # First start installs language runtimes; allow ~60s before Run works.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
 volumes:
   multicoder_pg_data:
   multicoder_redis_data:
