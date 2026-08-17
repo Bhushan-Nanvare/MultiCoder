@@ -1,18 +1,35 @@
 import type { editor } from 'monaco-editor';
 import type { Doc } from 'sharedb/lib/client';
-import type { RoomDocument } from '@/types/room';
+import { fileContent, normalizeProjectDocument } from '@/realtime/documentHelpers';
+import type { ProjectDocument } from '@/types/room';
+
+type Json0Op =
+  | { p: (string | number)[]; sd: string }
+  | { p: (string | number)[]; si: string };
+
+function contentPath(filePath: string, offset: number): (string | number)[] {
+  return ['files', filePath, 'content', offset];
+}
+
+function isContentOp(path: unknown[], filePath: string): path is [string, string, string, number] {
+  return (
+    path.length === 4 &&
+    path[0] === 'files' &&
+    path[1] === filePath &&
+    path[2] === 'content' &&
+    typeof path[3] === 'number'
+  );
+}
 
 /**
- * Two-way binding between a Monaco editor and a ShareDB document holding
- * `{ content: string, language: SupportedLanguage }`. Local Monaco edits are
- * translated into JSON0 string operations on `content`; remote ops are
- * re-applied to the model.
- *
- * Returns a disposer that removes both listeners.
+ * Two-way binding between Monaco and `files[filePath].content` on a ShareDB
+ * ProjectDocument. Legacy v1 docs are normalized for reads until the server
+ * migrates them.
  */
 export function bindMonacoToShareDb(
   monacoEditor: editor.IStandaloneCodeEditor,
-  doc: Doc<RoomDocument>,
+  doc: Doc<ProjectDocument>,
+  filePath: string,
 ): () => void {
   const model = monacoEditor.getModel();
   if (!model) {
@@ -21,35 +38,40 @@ export function bindMonacoToShareDb(
 
   let applyingRemote = false;
 
-  const remoteContent = doc.data?.content ?? '';
-  if (model.getValue() !== remoteContent) {
-    applyingRemote = true;
-    model.setValue(remoteContent);
-    applyingRemote = false;
-  }
+  const syncFromDoc = (): void => {
+    const normalized = normalizeProjectDocument(doc.data);
+    const remoteContent = fileContent(normalized, filePath);
+    if (model.getValue() !== remoteContent) {
+      applyingRemote = true;
+      model.setValue(remoteContent);
+      applyingRemote = false;
+    }
+  };
+
+  syncFromDoc();
 
   const localChangeListener = monacoEditor.onDidChangeModelContent((event) => {
     if (applyingRemote) return;
+
+    const normalized = normalizeProjectDocument(doc.data);
+    const docContent = fileContent(normalized, filePath);
 
     const ops = event.changes
       .slice()
       .sort((a, b) => b.rangeOffset - a.rangeOffset)
       .flatMap((change) => {
-        const result: Array<
-          { p: (string | number)[]; sd: string } | { p: (string | number)[]; si: string }
-        > = [];
+        const result: Json0Op[] = [];
         if (change.rangeLength > 0) {
-          const docContent = (doc.data?.content ?? '').toString();
           const deleted = docContent.slice(
             change.rangeOffset,
             change.rangeOffset + change.rangeLength,
           );
           if (deleted.length > 0) {
-            result.push({ p: ['content', change.rangeOffset], sd: deleted });
+            result.push({ p: contentPath(filePath, change.rangeOffset), sd: deleted });
           }
         }
         if (change.text.length > 0) {
-          result.push({ p: ['content', change.rangeOffset], si: change.text });
+          result.push({ p: contentPath(filePath, change.rangeOffset), si: change.text });
         }
         return result;
       });
@@ -70,14 +92,10 @@ export function bindMonacoToShareDb(
     try {
       for (const op of ops) {
         if (!op || typeof op !== 'object') continue;
-        const candidate = op as {
-          p?: Array<string | number>;
-          si?: string;
-          sd?: string;
-        };
+        const candidate = op as { p?: Array<string | number>; si?: string; sd?: string };
         const path = candidate.p;
-        if (!path || path[0] !== 'content') continue;
-        const offset = typeof path[1] === 'number' ? path[1] : 0;
+        if (!path || !isContentOp(path, filePath)) continue;
+        const offset = path[3];
 
         if (typeof candidate.sd === 'string' && candidate.sd.length > 0) {
           const start = model.getPositionAt(offset);

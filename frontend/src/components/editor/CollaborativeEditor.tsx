@@ -10,8 +10,9 @@ import {
 import type { editor } from 'monaco-editor';
 import type { Doc } from 'sharedb/lib/client';
 import { bindMonacoToShareDb } from '@/realtime/monacoShareDbBinding';
+import { normalizeProjectDocument } from '@/realtime/documentHelpers';
 import { SHAREDB_COLLECTION, getShareDbConnection } from '@/realtime/sharedbConnection';
-import type { RoomDocument, SupportedLanguage } from '@/types/room';
+import type { ProjectDocument, SupportedLanguage } from '@/types/room';
 
 interface CollaborativeEditorProps {
   roomId: string;
@@ -59,7 +60,7 @@ export const CollaborativeEditor = forwardRef<
     if (!editorInstance) return;
 
     const connection = getShareDbConnection();
-    const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<RoomDocument>;
+    const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
 
     doc.subscribe((err) => {
       if (err) {
@@ -72,8 +73,14 @@ export const CollaborativeEditor = forwardRef<
         setErrorMessage(`Document for room ${roomId} does not exist`);
         return;
       }
-      disposerRef.current = bindMonacoToShareDb(editorInstance, doc);
-      setStatus('ready');
+      try {
+        const normalized = normalizeProjectDocument(doc.data);
+        disposerRef.current = bindMonacoToShareDb(editorInstance, doc, normalized.entryPoint);
+        setStatus('ready');
+      } catch (bindErr) {
+        setStatus('error');
+        setErrorMessage(bindErr instanceof Error ? bindErr.message : 'Invalid room document');
+      }
     });
 
     return () => {
