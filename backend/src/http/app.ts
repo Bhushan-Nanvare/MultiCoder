@@ -26,12 +26,14 @@ import { errorHandler, notFoundHandler } from '@/http/middleware/errorHandler.js
 import { buildRateLimit } from '@/http/middleware/rateLimit.js';
 import { buildCorsMiddleware, buildHelmetMiddleware } from '@/http/middleware/security.js';
 import type { PlagiarismService } from '@/plagiarism/plagiarismService.js';
+import type { RealtimeDocumentService } from '@/realtime/documentService.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import type { SnapshotService } from '@/snapshots/snapshotService.js';
 import { logger } from '@/utils/logger.js';
 
 interface BuildAppOptions {
   roomService: RoomService;
+  documentService: RealtimeDocumentService;
   authService: AuthService;
   executionService: ExecutionService;
   aiReviewService: AiReviewService;
@@ -42,6 +44,7 @@ interface BuildAppOptions {
 
 export function buildApp({
   roomService,
+  documentService,
   authService,
   executionService,
   aiReviewService,
@@ -81,7 +84,7 @@ export function buildApp({
 
   app.use('/auth', buildAuthRouter(authService));
   app.use('/api/user', buildUserRouter(requireAuth));
-  app.use('/api/rooms', buildRoomRouter({ roomService, requireAuth }));
+  app.use('/api/rooms', buildRoomRouter({ roomService, documentService, requireAuth }));
   app.use(
     '/api/rooms/:roomId/snapshots',
     buildSnapshotRouter({

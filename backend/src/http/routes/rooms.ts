@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { SUPPORTED_LANGUAGES } from '@/constants/index.js';
+import type { RealtimeDocumentService } from '@/realtime/documentService.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import { AppError } from '@/utils/errors.js';
 
@@ -15,10 +16,15 @@ const roomIdParam = z.object({
 
 interface BuildRoomRouterOptions {
   roomService: RoomService;
+  documentService: RealtimeDocumentService;
   requireAuth: RequestHandler;
 }
 
-export function buildRoomRouter({ roomService, requireAuth }: BuildRoomRouterOptions): Router {
+export function buildRoomRouter({
+  roomService,
+  documentService,
+  requireAuth,
+}: BuildRoomRouterOptions): Router {
   const router = Router();
 
   router.post('/', requireAuth, async (req, res, next) => {
@@ -46,6 +52,7 @@ export function buildRoomRouter({ roomService, requireAuth }: BuildRoomRouterOpt
     try {
       const { id } = roomIdParam.parse(req.params);
       const room = await roomService.get(id);
+      await documentService.migrateLegacyIfNeeded(id);
       res.json({ data: room });
     } catch (err) {
       next(err);

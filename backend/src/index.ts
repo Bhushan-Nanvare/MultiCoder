@@ -51,6 +51,7 @@ async function main(): Promise<void> {
 
   const app = buildApp({
     roomService,
+    documentService,
     authService,
     executionService,
     aiReviewService,

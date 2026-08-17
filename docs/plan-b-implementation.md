@@ -109,7 +109,7 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** New rooms get `ProjectDocument` instead of `{ content, language }`.
 
 **Tasks:**
-- [ ] Update `RealtimeDocumentService.initializeDocument()` to create:
+- [x] Update `RealtimeDocumentService.initializeDocument()` to create:
   ```typescript
   {
     version: 2,
@@ -120,7 +120,7 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
   }
   ```
 - [ ] Add helper `languageToEntryPoint(lang)` in `backend/src/realtime/documentHelpers.ts`.
-- [ ] Update `readDocument()` return type to `ProjectDocument`.
+- [x] Update `readDocument()` return type to `ProjectDocument`.
 - [ ] Update backend tests/manual check: create room → ShareDB doc has `version: 2`.
 
 **Files:**
@@ -139,9 +139,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Existing rooms (v1 `{ content, language }`) still open; auto-upgrade on first backend read.
 
 **Tasks:**
-- [ ] Add `normalizeDocument(raw: unknown): ProjectDocument` — detects v1 vs v2.
-- [ ] If v1: convert to v2 in memory; optionally submit OT op to persist upgrade (prefer persist so all clients converge).
-- [ ] `readDocument()` and snapshot save both use `normalizeDocument`.
+- [x] Add `normalizeDocument(raw: unknown): ProjectDocument` — detects v1 vs v2.
+- [x] If v1: convert to v2 in memory; optionally submit OT op to persist upgrade (prefer persist so all clients converge).
+- [x] `readDocument()` and snapshot save both use `normalizeDocument`.
 
 **Files:**
 - `backend/src/realtime/documentHelpers.ts`
@@ -158,7 +158,7 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Server-side validation for structural changes (add/rename/delete file), callable from future HTTP or ShareDB middleware.
 
 **Tasks:**
-- [ ] Add `ProjectFileService` with methods:
+- [x] Add `ProjectFileService` with methods:
   - `addFile(doc, path, content?)`
   - `renameFile(doc, oldPath, newPath)` — update `entryPoint` if needed
   - `deleteFile(doc, path)` — forbid deleting last file; forbid deleting `entryPoint` without reassigning
@@ -185,12 +185,12 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Editor syncs `files[activePath].content`, not root `content`.
 
 **Tasks:**
-- [ ] Change `RoomDocument` → `ProjectDocument` in frontend types.
-- [ ] Update `monacoShareDbBinding.ts`:
+- [x] Change `RoomDocument` → `ProjectDocument` in frontend types.
+- [x] Update `monacoShareDbBinding.ts`:
   - Accept `{ doc, filePath }` instead of binding to `content`.
   - JSON0 path: `['files', filePath, 'content']`.
-- [ ] Add `normalizeProjectDocument()` on client (same rules as server) for v1 docs fetched before server migration.
-- [ ] `CollaborativeEditor` props: `roomId`, `filePath`, `language` (language from file or room).
+- [x] Add `normalizeProjectDocument()` on client (same rules as server) for v1 docs fetched before server migration.
+- [x] `CollaborativeEditor` props: `roomId`, `filePath`, `language` (language from file or room).
 
 **Files:**
 - `frontend/src/realtime/monacoShareDbBinding.ts`

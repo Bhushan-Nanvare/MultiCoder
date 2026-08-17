@@ -1,7 +1,23 @@
 import type ShareDB from 'sharedb';
 import { SHAREDB_COLLECTION, type SupportedLanguage } from '@/constants/index.js';
-import type { RoomDocument } from '@/realtime/types.js';
+import {
+  buildLegacyMigrationOps,
+  createEmptyProjectDocument,
+  isLegacyRoomDocument,
+  normalizeDocument,
+} from '@/realtime/documentHelpers.js';
+import type { ProjectDocument } from '@/realtime/types.js';
 import { NotFoundError } from '@/utils/errors.js';
+import { logger } from '@/utils/logger.js';
+
+function fetchDoc(doc: ReturnType<ShareDB.Connection['get']>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    doc.fetch((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
 
 export class RealtimeDocumentService {
   constructor(private readonly backend: ShareDB) {}
@@ -14,40 +30,61 @@ export class RealtimeDocumentService {
     const connection = this.backend.connect();
     const doc = connection.get(SHAREDB_COLLECTION, roomId);
 
-    await new Promise<void>((resolve, reject) => {
-      doc.fetch((fetchErr) => {
-        if (fetchErr) {
-          reject(fetchErr);
-          return;
-        }
-        if (doc.type) {
-          resolve();
-          return;
-        }
-        const initial: RoomDocument = { content: '', language };
+    try {
+      await fetchDoc(doc);
+      if (doc.type) return;
+
+      const initial = createEmptyProjectDocument(language);
+      await new Promise<void>((resolve, reject) => {
         doc.create(initial, (createErr) => {
-          if (createErr) {
-            reject(createErr);
-            return;
-          }
-          resolve();
+          if (createErr) reject(createErr);
+          else resolve();
         });
       });
-    });
-
-    connection.close();
+    } finally {
+      connection.close();
+    }
   }
 
   /**
-   * Reads the live ShareDB document for a room. Throws NotFoundError if the
-   * room has no initialized document.
+   * Upgrades a legacy v1 document to ProjectDocument v2 in ShareDB. No-op if
+   * already v2. Called before reads and when a room page is opened.
    */
-  async readDocument(roomId: string): Promise<RoomDocument> {
+  async migrateLegacyIfNeeded(roomId: string): Promise<void> {
     const connection = this.backend.connect();
     const doc = connection.get(SHAREDB_COLLECTION, roomId);
 
     try {
-      const data = await new Promise<RoomDocument>((resolve, reject) => {
+      await fetchDoc(doc);
+      if (!doc.type || doc.data === undefined) return;
+      if (!isLegacyRoomDocument(doc.data)) return;
+
+      const legacy = doc.data;
+      const ops = buildLegacyMigrationOps(legacy);
+      await new Promise<void>((resolve, reject) => {
+        doc.submitOp(ops, { source: 'migration' }, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      logger.info({ roomId }, 'Migrated legacy room document to ProjectDocument v2');
+    } finally {
+      connection.close();
+    }
+  }
+
+  /**
+   * Reads the live ShareDB document for a room. Throws NotFoundError if the
+   * room has no initialized document. Legacy documents are migrated first.
+   */
+  async readDocument(roomId: string): Promise<ProjectDocument> {
+    await this.migrateLegacyIfNeeded(roomId);
+
+    const connection = this.backend.connect();
+    const doc = connection.get(SHAREDB_COLLECTION, roomId);
+
+    try {
+      const data = await new Promise<ProjectDocument>((resolve, reject) => {
         doc.fetch((err) => {
           if (err) {
             reject(err);
@@ -57,7 +94,11 @@ export class RealtimeDocumentService {
             reject(new NotFoundError(`Room ${roomId} has no document`));
             return;
           }
-          resolve(doc.data as RoomDocument);
+          try {
+            resolve(normalizeDocument(doc.data));
+          } catch (normalizeErr) {
+            reject(normalizeErr);
+          }
         });
       });
       return data;

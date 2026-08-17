@@ -3,6 +3,7 @@ import {
   SNAPSHOT_MAX_PER_ROOM,
 } from '@/constants/index.js';
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
+import { projectEntryContent } from '@/realtime/documentHelpers.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import type { SnapshotRepository } from '@/snapshots/snapshotRepository.js';
 import type { SnapshotDetail, SnapshotSummary } from '@/snapshots/types.js';
@@ -19,8 +20,9 @@ export class SnapshotService {
   async saveCurrent(roomId: string, userId: string): Promise<SnapshotDetail> {
     await this.roomService.get(roomId); // 404s if room doesn't exist
     const doc = await this.documents.readDocument(roomId);
+    const content = projectEntryContent(doc);
 
-    if (Buffer.byteLength(doc.content, 'utf8') > SNAPSHOT_MAX_CONTENT_BYTES) {
+    if (Buffer.byteLength(content, 'utf8') > SNAPSHOT_MAX_CONTENT_BYTES) {
       throw new AppError(
         `Document exceeds snapshot limit of ${SNAPSHOT_MAX_CONTENT_BYTES} bytes`,
         413,
@@ -30,7 +32,7 @@ export class SnapshotService {
 
     const snapshot = await this.repository.create({
       roomId,
-      content: doc.content,
+      content,
       createdBy: userId,
     });
 
