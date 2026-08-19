@@ -10,13 +10,15 @@ import {
 import type { editor } from 'monaco-editor';
 import type { Doc } from 'sharedb/lib/client';
 import { bindMonacoToShareDb } from '@/realtime/monacoShareDbBinding';
-import { normalizeProjectDocument } from '@/realtime/documentHelpers';
 import { SHAREDB_COLLECTION, getShareDbConnection } from '@/realtime/sharedbConnection';
 import type { ProjectDocument, SupportedLanguage } from '@/types/room';
 
 interface CollaborativeEditorProps {
   roomId: string;
+  filePath: string;
   language: SupportedLanguage;
+  /** When false, waits for the parent hook to finish subscribing. */
+  docReady: boolean;
 }
 
 export interface CollaborativeEditorHandle {
@@ -38,7 +40,7 @@ const monacoLanguageMap: Record<SupportedLanguage, string> = {
 export const CollaborativeEditor = forwardRef<
   CollaborativeEditorHandle,
   CollaborativeEditorProps
->(function CollaborativeEditor({ roomId, language }, ref) {
+>(function CollaborativeEditor({ roomId, filePath, language, docReady }, ref) {
   const [status, setStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -55,55 +57,46 @@ export const CollaborativeEditor = forwardRef<
     [],
   );
 
-  const attach = useCallback(() => {
+  const bindEditor = useCallback(() => {
     const editorInstance = editorRef.current;
-    if (!editorInstance) return;
+    if (!editorInstance || !docReady) return undefined;
 
     const connection = getShareDbConnection();
     const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
 
-    doc.subscribe((err) => {
-      if (err) {
-        setStatus('error');
-        setErrorMessage(err.message);
-        return;
-      }
-      if (!doc.type) {
-        setStatus('error');
-        setErrorMessage(`Document for room ${roomId} does not exist`);
-        return;
-      }
-      try {
-        const normalized = normalizeProjectDocument(doc.data);
-        disposerRef.current = bindMonacoToShareDb(editorInstance, doc, normalized.entryPoint);
-        setStatus('ready');
-      } catch (bindErr) {
-        setStatus('error');
-        setErrorMessage(bindErr instanceof Error ? bindErr.message : 'Invalid room document');
-      }
-    });
+    if (!doc.type) {
+      setStatus('error');
+      setErrorMessage(`Document for room ${roomId} does not exist`);
+      return undefined;
+    }
+
+    try {
+      disposerRef.current?.();
+      disposerRef.current = bindMonacoToShareDb(editorInstance, doc, filePath);
+      setStatus('ready');
+      setErrorMessage(null);
+    } catch (bindErr) {
+      setStatus('error');
+      setErrorMessage(bindErr instanceof Error ? bindErr.message : 'Invalid room document');
+    }
 
     return () => {
       disposerRef.current?.();
       disposerRef.current = null;
-      doc.unsubscribe(() => undefined);
     };
-  }, [roomId]);
+  }, [roomId, filePath, docReady]);
 
   useEffect(() => {
-    if (!editorRef.current) return undefined;
-    const cleanup = attach();
-    return () => {
-      cleanup?.();
-    };
-  }, [attach]);
+    if (!docReady) {
+      setStatus('connecting');
+      return undefined;
+    }
+    return bindEditor();
+  }, [bindEditor, docReady]);
 
   const handleMount: OnMount = (instance) => {
     editorRef.current = instance;
-    const cleanup = attach();
-    instance.onDidDispose(() => {
-      cleanup?.();
-    });
+    bindEditor();
   };
 
   return (
@@ -118,7 +111,11 @@ export const CollaborativeEditor = forwardRef<
         }}
       >
         {status === 'connecting' && <span>Connecting to room…</span>}
-        {status === 'ready' && <span>Connected · room {roomId}</span>}
+        {status === 'ready' && (
+          <span>
+            Connected · {filePath} · room {roomId}
+          </span>
+        )}
         {status === 'error' && <span style={{ color: '#f87171' }}>Error: {errorMessage}</span>}
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>

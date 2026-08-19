@@ -6,6 +6,7 @@ import {
   type CollaborativeEditorHandle,
 } from '@/components/editor/CollaborativeEditor';
 import { EditorToolbar } from '@/components/editor/EditorToolbar';
+import { FileSwitcher } from '@/components/editor/FileSwitcher';
 import { OutputPanel } from '@/components/editor/OutputPanel';
 import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
@@ -15,6 +16,8 @@ import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
 import type { Room } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
+import { suggestSecondaryFilePath } from '@/realtime/projectOps';
+import { useProjectDocument } from '@/realtime/useProjectDocument';
 
 export function RoomPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +43,19 @@ export function RoomPage(): JSX.Element {
   const [snapshotsError, setSnapshotsError] = useState<string | null>(null);
   const [savingSnapshot, setSavingSnapshot] = useState(false);
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
+  const [activeFilePath, setActiveFilePath] = useState('');
+  const [addFileError, setAddFileError] = useState<string | null>(null);
+  const [addingFile, setAddingFile] = useState(false);
+
+  const project = useProjectDocument(id ?? '');
+
+  useEffect(() => {
+    if (project.status !== 'ready') return;
+    setActiveFilePath((current) => {
+      if (current && project.files.includes(current)) return current;
+      return project.entryPoint;
+    });
+  }, [project.status, project.files, project.entryPoint]);
 
   useEffect(() => {
     if (!id) return undefined;
@@ -62,6 +78,25 @@ export function RoomPage(): JSX.Element {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleAddFile = useCallback(async (): Promise<void> => {
+    if (!room) return;
+    const path = suggestSecondaryFilePath(room.language, project.files);
+    if (!path) {
+      setAddFileError('No available file name to add.');
+      return;
+    }
+    setAddingFile(true);
+    setAddFileError(null);
+    try {
+      await project.addFile(path, room.language);
+      setActiveFilePath(path);
+    } catch (err: unknown) {
+      setAddFileError(err instanceof Error ? err.message : 'Failed to add file');
+    } finally {
+      setAddingFile(false);
+    }
+  }, [room, project.files, project.addFile]);
 
   const handleRun = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -285,8 +320,41 @@ export function RoomPage(): JSX.Element {
         onToggleHistory={handleToggleHistory}
         historyOpen={historyOpen}
       />
+      <FileSwitcher
+        files={project.files}
+        activeFile={activeFilePath}
+        entryPoint={project.entryPoint}
+        disabled={project.status !== 'ready'}
+        onSelect={setActiveFilePath}
+        onAddFile={handleAddFile}
+        addFileDisabled={addingFile || project.status !== 'ready'}
+        addFileError={addFileError}
+      />
       <div style={{ flex: 1, minHeight: 0 }}>
-        <CollaborativeEditor ref={editorRef} roomId={room.id} language={room.language} />
+        {activeFilePath && project.status === 'ready' ? (
+          <CollaborativeEditor
+            ref={editorRef}
+            roomId={room.id}
+            filePath={activeFilePath}
+            language={room.language}
+            docReady
+          />
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#94a3b8',
+              fontSize: 14,
+            }}
+          >
+            {project.status === 'error'
+              ? (project.error ?? 'Failed to load project')
+              : 'Loading project…'}
+          </div>
+        )}
       </div>
       <OutputPanel
         result={executionResult}

@@ -208,10 +208,10 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Switch between files without a tree; seed exactly two files in new rooms.
 
 **Tasks:**
-- [ ] Add `FileSwitcher` component — dropdown of `Object.keys(doc.files)`.
-- [ ] RoomPage state: `activeFilePath` (default `doc.entryPoint`).
-- [ ] On switch: dispose old Monaco binding, attach to new path (or remount editor with `key={activeFilePath}`).
-- [ ] Temporary **"Add second file"** button (dev-only or permanent until Stage 3):
+- [x] Add `FileSwitcher` component — dropdown of `Object.keys(doc.files)`.
+- [x] RoomPage state: `activeFilePath` (default `doc.entryPoint`).
+- [x] On switch: dispose old Monaco binding, attach to new path (or remount editor with `key={activeFilePath}`).
+- [x] Temporary **"Add second file"** button (dev-only or permanent until Stage 3):
   - Submits ShareDB op: insert `files['utils.js']` with `{ content: '', language }`.
   - Updates local `activeFilePath`.
 
