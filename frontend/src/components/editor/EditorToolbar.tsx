@@ -1,7 +1,12 @@
 import type { SupportedLanguage } from '@/types/room';
+import { EntryPointPicker } from '@/components/project/EntryPointPicker';
 
 interface EditorToolbarProps {
   language: SupportedLanguage;
+  entryPoint: string;
+  entryPointFiles: string[];
+  entryPointDisabled?: boolean;
+  onEntryPointChange: (path: string) => void;
   onRun: () => void;
   running: boolean;
   onReview: () => void;
@@ -14,6 +19,10 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({
   language,
+  entryPoint,
+  entryPointFiles,
+  entryPointDisabled = false,
+  onEntryPointChange,
   onRun,
   running,
   onReview,
@@ -47,6 +56,12 @@ export function EditorToolbar({
       >
         {language}
       </code>
+      <EntryPointPicker
+        files={entryPointFiles}
+        entryPoint={entryPoint}
+        disabled={entryPointDisabled}
+        onChange={onEntryPointChange}
+      />
       <div style={{ flex: 1 }} />
       <button
         type="button"

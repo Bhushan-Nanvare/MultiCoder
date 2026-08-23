@@ -6,17 +6,18 @@ import {
   type CollaborativeEditorHandle,
 } from '@/components/editor/CollaborativeEditor';
 import { EditorToolbar } from '@/components/editor/EditorToolbar';
-import { FileSwitcher } from '@/components/editor/FileSwitcher';
 import { OutputPanel } from '@/components/editor/OutputPanel';
 import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
+import { FilePathModal } from '@/components/project/FilePathModal';
+import { FileTree } from '@/components/project/FileTree';
+import { TabBar } from '@/components/project/TabBar';
 import { ReviewPanel } from '@/components/review/ReviewPanel';
 import type { ExecutionResult } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
 import type { Room } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
-import { suggestSecondaryFilePath } from '@/realtime/projectOps';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
 
 export function RoomPage(): JSX.Element {
@@ -44,8 +45,11 @@ export function RoomPage(): JSX.Element {
   const [savingSnapshot, setSavingSnapshot] = useState(false);
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
   const [activeFilePath, setActiveFilePath] = useState('');
-  const [addFileError, setAddFileError] = useState<string | null>(null);
-  const [addingFile, setAddingFile] = useState(false);
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [treeError, setTreeError] = useState<string | null>(null);
+  const [treeBusy, setTreeBusy] = useState(false);
+  const [newFileOpen, setNewFileOpen] = useState(false);
+  const [renamePath, setRenamePath] = useState<string | null>(null);
 
   const project = useProjectDocument(id ?? '');
 
@@ -54,6 +58,11 @@ export function RoomPage(): JSX.Element {
     setActiveFilePath((current) => {
       if (current && project.files.includes(current)) return current;
       return project.entryPoint;
+    });
+    setOpenTabs((tabs) => {
+      const stillPresent = tabs.filter((path) => project.files.includes(path));
+      if (stillPresent.length > 0) return stillPresent;
+      return project.entryPoint ? [project.entryPoint] : [];
     });
   }, [project.status, project.files, project.entryPoint]);
 
@@ -79,30 +88,100 @@ export function RoomPage(): JSX.Element {
     window.setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAddFile = useCallback(async (): Promise<void> => {
-    if (!room) return;
-    const path = suggestSecondaryFilePath(room.language, project.files);
-    if (!path) {
-      setAddFileError('No available file name to add.');
-      return;
-    }
-    setAddingFile(true);
-    setAddFileError(null);
-    try {
-      await project.addFile(path, room.language);
-      setActiveFilePath(path);
-    } catch (err: unknown) {
-      setAddFileError(err instanceof Error ? err.message : 'Failed to add file');
-    } finally {
-      setAddingFile(false);
-    }
-  }, [room, project.files, project.addFile]);
+  const openFile = useCallback((path: string): void => {
+    setActiveFilePath(path);
+    setOpenTabs((tabs) => (tabs.includes(path) ? tabs : [...tabs, path]));
+  }, []);
+
+  const closeTab = useCallback(
+    (path: string): void => {
+      setOpenTabs((tabs) => {
+        const next = tabs.filter((tab) => tab !== path);
+        setActiveFilePath((current) => {
+          if (current !== path) return current;
+          const fallback = next[next.length - 1] ?? project.entryPoint;
+          return fallback;
+        });
+        return next;
+      });
+    },
+    [project.entryPoint],
+  );
+
+  const handleCreateFile = useCallback(
+    async (path: string): Promise<void> => {
+      if (!room) return;
+      setTreeBusy(true);
+      setTreeError(null);
+      try {
+        await project.addFile(path, room.language);
+        setNewFileOpen(false);
+        openFile(path);
+      } catch (err: unknown) {
+        setTreeError(err instanceof Error ? err.message : 'Failed to add file');
+      } finally {
+        setTreeBusy(false);
+      }
+    },
+    [room, project.addFile, openFile],
+  );
+
+  const handleRenameFile = useCallback(
+    async (newPath: string): Promise<void> => {
+      if (!renamePath) return;
+      setTreeBusy(true);
+      setTreeError(null);
+      try {
+        await project.renameFile(renamePath, newPath);
+        setOpenTabs((tabs) => tabs.map((tab) => (tab === renamePath ? newPath : tab)));
+        setActiveFilePath((current) => (current === renamePath ? newPath : current));
+        setRenamePath(null);
+      } catch (err: unknown) {
+        setTreeError(err instanceof Error ? err.message : 'Failed to rename file');
+      } finally {
+        setTreeBusy(false);
+      }
+    },
+    [renamePath, project.renameFile],
+  );
+
+  const handleDeleteFile = useCallback(
+    async (path: string): Promise<void> => {
+      if (project.files.length <= 1) return;
+      const confirmed = window.confirm(`Delete ${path}? This cannot be undone.`);
+      if (!confirmed) return;
+      setTreeBusy(true);
+      setTreeError(null);
+      try {
+        await project.deleteFile(path);
+        setOpenTabs((tabs) => tabs.filter((tab) => tab !== path));
+      } catch (err: unknown) {
+        setTreeError(err instanceof Error ? err.message : 'Failed to delete file');
+      } finally {
+        setTreeBusy(false);
+      }
+    },
+    [project.files.length, project.deleteFile],
+  );
+
+  const handleEntryPointChange = useCallback(
+    async (path: string): Promise<void> => {
+      setTreeError(null);
+      try {
+        await project.setEntryPoint(path);
+      } catch (err: unknown) {
+        setTreeError(err instanceof Error ? err.message : 'Failed to set entry point');
+      }
+    },
+    [project.setEntryPoint],
+  );
 
   const handleRun = useCallback(async (): Promise<void> => {
     if (!room) return;
-    const code = editorRef.current?.getValue() ?? '';
+    const entryContent = project.filesMap[project.entryPoint]?.content;
+    const code = entryContent ?? editorRef.current?.getValue() ?? '';
     if (!code.trim()) {
-      setExecutionError('Nothing to run — the editor is empty.');
+      setExecutionError(`Nothing to run — ${project.entryPoint || 'the entry file'} is empty.`);
       setExecutionResult(null);
       return;
     }
@@ -117,7 +196,7 @@ export function RoomPage(): JSX.Element {
     } finally {
       setRunning(false);
     }
-  }, [room]);
+  }, [room, project.filesMap, project.entryPoint]);
 
   const handleReview = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -311,6 +390,10 @@ export function RoomPage(): JSX.Element {
       </header>
       <EditorToolbar
         language={room.language}
+        entryPoint={project.entryPoint}
+        entryPointFiles={project.files}
+        entryPointDisabled={project.status !== 'ready'}
+        onEntryPointChange={handleEntryPointChange}
         onRun={handleRun}
         running={running}
         onReview={handleReview}
@@ -320,42 +403,92 @@ export function RoomPage(): JSX.Element {
         onToggleHistory={handleToggleHistory}
         historyOpen={historyOpen}
       />
-      <FileSwitcher
-        files={project.files}
-        activeFile={activeFilePath}
-        entryPoint={project.entryPoint}
-        disabled={project.status !== 'ready'}
-        onSelect={setActiveFilePath}
-        onAddFile={handleAddFile}
-        addFileDisabled={addingFile || project.status !== 'ready'}
-        addFileError={addFileError}
-      />
-      <div style={{ flex: 1, minHeight: 0 }}>
-        {activeFilePath && project.status === 'ready' ? (
-          <CollaborativeEditor
-            ref={editorRef}
-            roomId={room.id}
-            filePath={activeFilePath}
-            language={room.language}
-            docReady
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <FileTree
+          files={project.files}
+          activeFile={activeFilePath}
+          entryPoint={project.entryPoint}
+          disabled={project.status !== 'ready' || treeBusy}
+          onSelect={openFile}
+          onNewFile={() => {
+            setTreeError(null);
+            setNewFileOpen(true);
+          }}
+          onRename={(path) => {
+            setTreeError(null);
+            setRenamePath(path);
+          }}
+          onDelete={handleDeleteFile}
+        />
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <TabBar
+            openTabs={openTabs}
+            activeFile={activeFilePath}
+            onSelect={setActiveFilePath}
+            onClose={closeTab}
           />
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: '#94a3b8',
-              fontSize: 14,
-            }}
-          >
-            {project.status === 'error'
-              ? (project.error ?? 'Failed to load project')
-              : 'Loading project…'}
+          {treeError && (
+            <div style={{ padding: '6px 12px', color: '#f87171', fontSize: 12, background: '#0f172a' }}>
+              {treeError}
+            </div>
+          )}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {activeFilePath && project.status === 'ready' ? (
+              <CollaborativeEditor
+                key={activeFilePath}
+                ref={editorRef}
+                roomId={room.id}
+                filePath={activeFilePath}
+                language={room.language}
+                docReady
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: '#94a3b8',
+                  fontSize: 14,
+                }}
+              >
+                {project.status === 'error'
+                  ? (project.error ?? 'Failed to load project')
+                  : 'Loading project…'}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+      <FilePathModal
+        open={newFileOpen}
+        title="New file"
+        submitLabel="Create"
+        existingPaths={project.files}
+        busy={treeBusy}
+        error={treeError}
+        onSubmit={handleCreateFile}
+        onClose={() => {
+          setNewFileOpen(false);
+          setTreeError(null);
+        }}
+      />
+      <FilePathModal
+        open={renamePath !== null}
+        title="Rename file"
+        submitLabel="Rename"
+        initialPath={renamePath ?? ''}
+        existingPaths={project.files}
+        ignorePath={renamePath ?? undefined}
+        busy={treeBusy}
+        error={treeError}
+        onSubmit={handleRenameFile}
+        onClose={() => {
+          setRenamePath(null);
+          setTreeError(null);
+        }}
+      />
       <OutputPanel
         result={executionResult}
         errorMessage={executionError}

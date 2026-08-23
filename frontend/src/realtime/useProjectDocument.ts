@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Doc } from 'sharedb/lib/client';
 import { normalizeProjectDocument } from '@/realtime/documentHelpers';
-import { buildAddFileOp } from '@/realtime/projectOps';
+import {
+  assertCanAddFile,
+  assertCanDeleteFile,
+  buildAddFileOp,
+  buildDeleteFileOp,
+  buildRenameFileOps,
+  buildSetEntryPointOps,
+  type ProjectMutationOp,
+} from '@/realtime/projectOps';
 import { SHAREDB_COLLECTION, getShareDbConnection } from '@/realtime/sharedbConnection';
-import type { ProjectDocument, SupportedLanguage } from '@/types/room';
+import type { ProjectDocument, ProjectFile, SupportedLanguage } from '@/types/room';
 
 interface ProjectDocumentState {
   status: 'connecting' | 'ready' | 'error';
   error: string | null;
   files: string[];
   entryPoint: string;
+  filesMap: Record<string, ProjectFile>;
 }
 
 const initialState: ProjectDocumentState = {
@@ -17,6 +26,7 @@ const initialState: ProjectDocumentState = {
   error: null,
   files: [],
   entryPoint: '',
+  filesMap: {},
 };
 
 function readStateFromDoc(doc: Doc<ProjectDocument>): Omit<ProjectDocumentState, 'status' | 'error'> {
@@ -24,12 +34,29 @@ function readStateFromDoc(doc: Doc<ProjectDocument>): Omit<ProjectDocumentState,
   return {
     files: Object.keys(normalized.files).sort(),
     entryPoint: normalized.entryPoint,
+    filesMap: normalized.files,
   };
+}
+
+function submitProjectOps(roomId: string, ops: ProjectMutationOp[]): Promise<void> {
+  const connection = getShareDbConnection();
+  const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
+
+  return new Promise((resolve, reject) => {
+    if (ops.length === 0) {
+      resolve();
+      return;
+    }
+    doc.submitOp(ops, undefined, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 }
 
 /**
  * Subscribes to the room ShareDB document and exposes project file metadata
- * for the file switcher (Stage 2.2).
+ * and mutation helpers for the file tree (Stage 3+).
  */
 export function useProjectDocument(roomId: string) {
   const [state, setState] = useState<ProjectDocumentState>(initialState);
@@ -84,17 +111,61 @@ export function useProjectDocument(roomId: string) {
     (path: string, language: SupportedLanguage, content = ''): Promise<void> => {
       const connection = getShareDbConnection();
       const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
-
-      return new Promise((resolve, reject) => {
-        const op = buildAddFileOp(path, content, language);
-        doc.submitOp([op], undefined, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
+      const normalized = normalizeProjectDocument(doc.data);
+      assertCanAddFile(Object.keys(normalized.files).length);
+      return submitProjectOps(roomId, [buildAddFileOp(path, content, language)]);
     },
     [roomId],
   );
 
-  return { ...state, addFile };
+  const renameFile = useCallback(
+    (oldPath: string, newPath: string): Promise<void> => {
+      const connection = getShareDbConnection();
+      const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
+      const normalized = normalizeProjectDocument(doc.data);
+      const file = normalized.files[oldPath];
+      if (!file) throw new Error(`File not found: ${oldPath}`);
+      if (normalized.files[newPath]) throw new Error(`File already exists: ${newPath}`);
+      return submitProjectOps(
+        roomId,
+        buildRenameFileOps(oldPath, newPath, file, normalized.entryPoint),
+      );
+    },
+    [roomId],
+  );
+
+  const deleteFile = useCallback(
+    (path: string): Promise<void> => {
+      const connection = getShareDbConnection();
+      const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
+      const normalized = normalizeProjectDocument(doc.data);
+      assertCanDeleteFile(Object.keys(normalized.files).length);
+      const file = normalized.files[path];
+      if (!file) throw new Error(`File not found: ${path}`);
+      const ops: ProjectMutationOp[] = [];
+      if (normalized.entryPoint === path) {
+        const nextEntry = Object.keys(normalized.files).find((candidate) => candidate !== path);
+        if (!nextEntry) throw new Error('Cannot delete the last file in a project');
+        ops.push(...buildSetEntryPointOps(normalized.entryPoint, nextEntry));
+      }
+      ops.push(buildDeleteFileOp(path, file));
+      return submitProjectOps(roomId, ops);
+    },
+    [roomId],
+  );
+
+  const setEntryPoint = useCallback(
+    (newEntry: string): Promise<void> => {
+      const connection = getShareDbConnection();
+      const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
+      const normalized = normalizeProjectDocument(doc.data);
+      if (!normalized.files[newEntry]) {
+        throw new Error(`File not found: ${newEntry}`);
+      }
+      return submitProjectOps(roomId, buildSetEntryPointOps(normalized.entryPoint, newEntry));
+    },
+    [roomId],
+  );
+
+  return { ...state, addFile, renameFile, deleteFile, setEntryPoint };
 }

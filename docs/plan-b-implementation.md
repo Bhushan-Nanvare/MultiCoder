@@ -234,11 +234,11 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** VS Code–like sidebar; create / rename / delete files via ShareDB ops.
 
 **Tasks:**
-- [ ] `FileTree` component — list `doc.files` keys, highlight `activeFilePath`.
-- [ ] **New file** — modal for path (`src/helper.js`); validate; OT insert.
-- [ ] **Rename** — inline or modal; OT rename = insert new key + delete old + fix `entryPoint` if needed.
-- [ ] **Delete** — confirm; OT delete key; switch active tab if deleted file was open.
-- [ ] Use shared path validation (port zod schema to frontend or duplicate minimal rules).
+- [x] `FileTree` component — list `doc.files` keys, highlight `activeFilePath`.
+- [x] **New file** — modal for path (`src/helper.js`); validate; OT insert.
+- [x] **Rename** — inline or modal; OT rename = insert new key + delete old + fix `entryPoint` if needed.
+- [x] **Delete** — confirm; OT delete key; switch active tab if deleted file was open.
+- [x] Use shared path validation (port zod schema to frontend or duplicate minimal rules).
 
 **Files:**
 - `frontend/src/components/project/FileTree.tsx` (new)
@@ -257,10 +257,10 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Open multiple files as tabs; close tab ≠ delete file.
 
 **Tasks:**
-- [ ] `TabBar` — open tabs stored in React state (`openTabs: string[]`).
-- [ ] Click tab → set `activeFilePath`.
-- [ ] Close tab → remove from `openTabs` only.
-- [ ] Click file in tree → open or focus tab.
+- [x] `TabBar` — open tabs stored in React state (`openTabs: string[]`).
+- [x] Click tab → set `activeFilePath`.
+- [x] Close tab → remove from `openTabs` only.
+- [x] Click file in tree → open or focus tab.
 
 **Files:**
 - `frontend/src/components/project/TabBar.tsx` (new)
@@ -277,9 +277,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** User chooses which file **Run** executes (before multi-file payload lands).
 
 **Tasks:**
-- [ ] Small UI in toolbar: "Entry: [main.js ▼]".
-- [ ] Persist `entryPoint` on doc via ShareDB op (shared for whole room).
-- [ ] Default remains language-based `main.*`.
+- [x] Small UI in toolbar: "Entry: [main.js ▼]".
+- [x] Persist `entryPoint` on doc via ShareDB op (shared for whole room).
+- [x] Default remains language-based `main.*`.
 
 **Files:**
 - `frontend/src/components/project/EntryPointPicker.tsx` (new)
