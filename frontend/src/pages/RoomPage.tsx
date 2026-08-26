@@ -13,7 +13,7 @@ import { FilePathModal } from '@/components/project/FilePathModal';
 import { FileTree } from '@/components/project/FileTree';
 import { TabBar } from '@/components/project/TabBar';
 import { ReviewPanel } from '@/components/review/ReviewPanel';
-import type { ExecutionResult } from '@/types/execution';
+import type { ExecutionResult, RunScope } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
 import type { Room } from '@/types/room';
@@ -48,6 +48,7 @@ export function RoomPage(): JSX.Element {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
   const [treeBusy, setTreeBusy] = useState(false);
+  const [runScope, setRunScope] = useState<RunScope>('project');
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
 
@@ -178,25 +179,48 @@ export function RoomPage(): JSX.Element {
 
   const handleRun = useCallback(async (): Promise<void> => {
     if (!room) return;
-    const entryContent = project.filesMap[project.entryPoint]?.content;
-    const code = entryContent ?? editorRef.current?.getValue() ?? '';
-    if (!code.trim()) {
-      setExecutionError(`Nothing to run — ${project.entryPoint || 'the entry file'} is empty.`);
+
+    const filesMap = project.filesMap;
+    const liveActive = editorRef.current?.getValue();
+    const files = Object.entries(filesMap).map(([path, file]) => ({
+      path,
+      content:
+        path === activeFilePath && liveActive !== undefined ? liveActive : file.content,
+    }));
+
+    const entryPoint =
+      runScope === 'file' ? activeFilePath || project.entryPoint : project.entryPoint;
+    const payloadFiles =
+      runScope === 'file' ? files.filter((file) => file.path === entryPoint) : files;
+    const entryContent = payloadFiles.find((file) => file.path === entryPoint)?.content ?? '';
+
+    if (!entryPoint || payloadFiles.length === 0) {
+      setExecutionError('Nothing to run — no files in this project.');
       setExecutionResult(null);
       return;
     }
+    if (!entryContent.trim()) {
+      setExecutionError(`Nothing to run — ${entryPoint} is empty.`);
+      setExecutionResult(null);
+      return;
+    }
+
     setRunning(true);
     setExecutionError(null);
     setExecutionResult(null);
     try {
-      const result = await api.executeCode({ language: room.language, code });
+      const result = await api.executeProject({
+        language: room.language,
+        entryPoint,
+        files: payloadFiles,
+      });
       setExecutionResult(result);
     } catch (err: unknown) {
       setExecutionError(err instanceof Error ? err.message : 'Execution failed');
     } finally {
       setRunning(false);
     }
-  }, [room, project.filesMap, project.entryPoint]);
+  }, [room, project.filesMap, project.entryPoint, activeFilePath, runScope]);
 
   const handleReview = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -394,6 +418,8 @@ export function RoomPage(): JSX.Element {
         entryPointFiles={project.files}
         entryPointDisabled={project.status !== 'ready'}
         onEntryPointChange={handleEntryPointChange}
+        runScope={runScope}
+        onRunScopeChange={setRunScope}
         onRun={handleRun}
         running={running}
         onReview={handleReview}

@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from '@/types/room';
+import type { RunScope } from '@/types/execution';
 import { EntryPointPicker } from '@/components/project/EntryPointPicker';
 
 interface EditorToolbarProps {
@@ -7,6 +8,8 @@ interface EditorToolbarProps {
   entryPointFiles: string[];
   entryPointDisabled?: boolean;
   onEntryPointChange: (path: string) => void;
+  runScope: RunScope;
+  onRunScopeChange: (scope: RunScope) => void;
   onRun: () => void;
   running: boolean;
   onReview: () => void;
@@ -23,6 +26,8 @@ export function EditorToolbar({
   entryPointFiles,
   entryPointDisabled = false,
   onEntryPointChange,
+  runScope,
+  onRunScopeChange,
   onRun,
   running,
   onReview,
@@ -62,6 +67,43 @@ export function EditorToolbar({
         disabled={entryPointDisabled}
         onChange={onEntryPointChange}
       />
+      <div
+        style={{
+          display: 'inline-flex',
+          border: '1px solid #334155',
+          borderRadius: 6,
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onRunScopeChange('project')}
+          style={{
+            background: runScope === 'project' ? '#1e3a5f' : '#0b1220',
+            color: '#e2e8f0',
+            border: 'none',
+            padding: '4px 10px',
+            fontSize: 12,
+            cursor: 'pointer',
+          }}
+        >
+          Run project
+        </button>
+        <button
+          type="button"
+          onClick={() => onRunScopeChange('file')}
+          style={{
+            background: runScope === 'file' ? '#1e3a5f' : '#0b1220',
+            color: '#e2e8f0',
+            border: 'none',
+            padding: '4px 10px',
+            fontSize: 12,
+            cursor: 'pointer',
+          }}
+        >
+          Run file
+        </button>
+      </div>
       <div style={{ flex: 1 }} />
       <button
         type="button"

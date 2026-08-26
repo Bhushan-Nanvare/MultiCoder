@@ -299,7 +299,7 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Backend runs entry file with sibling files in sandbox.
 
 **Tasks:**
-- [ ] Extend execute body zod schema:
+- [x] Extend execute body zod schema:
   ```typescript
   {
     language: SupportedLanguage,
@@ -309,8 +309,8 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
   }
   ```
   Keep backward compat: `{ language, code }` → treat as single-file `{ entryPoint: 'main.*', files: [{ path, content: code }] }`.
-- [ ] `ExecutionService.executeProject()` — map paths to Piston `files: [{ name, content }]`, set `run` entry.
-- [ ] Enforce limits: max files, total bytes, max per file.
+- [x] `ExecutionService.executeProject()` — map paths to Piston `files: [{ name, content }]`, set `run` entry.
+- [x] Enforce limits: max files, total bytes, max per file.
 
 **Files:**
 - `backend/src/execution/types.ts`
@@ -329,9 +329,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Run button collects all files from ShareDB doc, not just active editor.
 
 **Tasks:**
-- [ ] `CollaborativeEditor` or RoomPage exposes `getProject(): { entryPoint, files }` from live doc data.
-- [ ] `handleRun` calls `api.executeProject({ ... })`.
-- [ ] Show compile errors from `compileStderr` in OutputPanel (already partially there).
+- [x] `CollaborativeEditor` or RoomPage exposes `getProject(): { entryPoint, files }` from live doc data.
+- [x] `handleRun` calls `api.executeProject({ ... })`.
+- [x] Show compile errors from `compileStderr` in OutputPanel (already partially there).
 
 **Files:**
 - `frontend/src/api/client.ts`
@@ -349,8 +349,8 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Run active file only vs run project.
 
 **Tasks:**
-- [ ] Toolbar toggle: "Run file" | "Run project".
-- [ ] Run file → old single-file API path.
+- [x] Toolbar toggle: "Run file" | "Run project".
+- [x] Run file → old single-file API path.
 
 **COMMIT:** `feat(ui): add run file vs run project toggle`
 

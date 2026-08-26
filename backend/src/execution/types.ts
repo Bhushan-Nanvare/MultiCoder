@@ -6,7 +6,6 @@ export interface ExecuteRequest {
   stdin?: string;
 }
 
-/** Stage 4 multi-file execute payload (types only until API accepts it). */
 export interface ExecuteProjectFile {
   path: string;
   content: string;

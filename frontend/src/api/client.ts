@@ -1,7 +1,7 @@
 import { env } from '@/config/env';
 import { readSseFrames } from '@/api/sseClient';
 import type { AuthUser } from '@/types/auth';
-import type { ExecutionResult } from '@/types/execution';
+import type { ExecutionResult, ExecuteProjectRequest } from '@/types/execution';
 import type { PlagiarismRequest, PlagiarismResult } from '@/types/plagiarism';
 import type {
   ReviewRequest,
@@ -95,6 +95,14 @@ export const api = {
     code: string;
     stdin?: string;
   }): Promise<ExecutionResult> {
+    const json = await request<{ data: ExecutionResult }>('/api/execute', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return json.data;
+  },
+
+  async executeProject(input: ExecuteProjectRequest): Promise<ExecutionResult> {
     const json = await request<{ data: ExecutionResult }>('/api/execute', {
       method: 'POST',
       body: JSON.stringify(input),

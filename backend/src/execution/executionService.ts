@@ -1,10 +1,15 @@
 import type { SupportedLanguage } from '@/constants/index.js';
-import { EXECUTION_MAX_CODE_BYTES, EXECUTION_MAX_STDIN_BYTES } from '@/constants/index.js';
+import { EXECUTION_MAX_STDIN_BYTES } from '@/constants/index.js';
+import { toPistonFiles } from '@/execution/pistonFiles.js';
 import type {
   PistonClient,
   PistonExecuteResponse,
 } from '@/execution/pistonClient.js';
-import type { ExecuteRequest, ExecutionResult } from '@/execution/types.js';
+import type {
+  ExecuteProjectRequest,
+  ExecuteRequest,
+  ExecutionResult,
+} from '@/execution/types.js';
 import { AppError } from '@/utils/errors.js';
 import { logger } from '@/utils/logger.js';
 
@@ -63,13 +68,16 @@ export class ExecutionService {
   }
 
   async execute(request: ExecuteRequest): Promise<ExecutionResult> {
-    if (Buffer.byteLength(request.code, 'utf8') > EXECUTION_MAX_CODE_BYTES) {
-      throw new AppError(
-        `Code exceeds ${EXECUTION_MAX_CODE_BYTES} bytes`,
-        413,
-        'EXECUTION_CODE_TOO_LARGE',
-      );
-    }
+    const mapping = LANGUAGE_MAPPINGS[request.language];
+    return this.executeProject({
+      language: request.language,
+      entryPoint: mapping.fileName,
+      files: [{ path: mapping.fileName, content: request.code }],
+      stdin: request.stdin,
+    });
+  }
+
+  async executeProject(request: ExecuteProjectRequest): Promise<ExecutionResult> {
     if (request.stdin && Buffer.byteLength(request.stdin, 'utf8') > EXECUTION_MAX_STDIN_BYTES) {
       throw new AppError(
         `stdin exceeds ${EXECUTION_MAX_STDIN_BYTES} bytes`,
@@ -77,6 +85,8 @@ export class ExecutionService {
         'EXECUTION_STDIN_TOO_LARGE',
       );
     }
+
+    const pistonFiles = toPistonFiles(request);
 
     await this.initialize();
     if (!this.versions) {
@@ -90,7 +100,7 @@ export class ExecutionService {
     const response = await this.piston.execute({
       language: mapping.pistonLanguage,
       version,
-      files: [{ name: mapping.fileName, content: request.code }],
+      files: pistonFiles,
       stdin: request.stdin,
     });
     const elapsedMs = Date.now() - startedAt;

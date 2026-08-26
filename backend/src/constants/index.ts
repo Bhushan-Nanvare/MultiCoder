@@ -26,6 +26,7 @@ export const EXECUTION_RUN_TIMEOUT_MS = 5_000;
 export const EXECUTION_COMPILE_TIMEOUT_MS = 10_000;
 export const EXECUTION_MAX_CODE_BYTES = 64 * 1024; // 64 KB source
 export const EXECUTION_MAX_STDIN_BYTES = 8 * 1024;
+export const EXECUTION_MAX_PROJECT_BYTES = 256 * 1024;
 
 // --- Rate limiting ---
 export const EXECUTION_RATE_LIMIT_MAX = 10;

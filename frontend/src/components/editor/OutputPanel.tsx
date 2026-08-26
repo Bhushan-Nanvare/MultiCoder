@@ -55,7 +55,7 @@ export function OutputPanel({ result, errorMessage, running }: OutputPanelProps)
       )}
 
       {!running && !errorMessage && !result && (
-        <p style={{ opacity: 0.5 }}>Press Run to execute the current code.</p>
+        <p style={{ opacity: 0.5 }}>Press Run to execute the project (or the active file).</p>
       )}
 
       {!running && result && (
