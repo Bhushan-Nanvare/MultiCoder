@@ -363,10 +363,10 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** History saves and restores all files + entry point.
 
 **Tasks:**
-- [ ] Change snapshot `content` column to store JSON string of `{ entryPoint, files }` (or add `snapshotVersion` — prefer JSON in existing column to avoid migration if size OK).
-- [ ] If DB column stays string: `JSON.stringify({ version: 2, entryPoint, files })`.
-- [ ] `SnapshotService.saveCurrent()` reads full `ProjectDocument`.
-- [ ] Restore: apply bulk op or replace doc (prefer OT-friendly: set entire `files` object via composed ops; or `doc.fetch` + server-side restore endpoint that writes doc).
+- [x] Change snapshot `content` column to store JSON string of `{ entryPoint, files }` (or add `snapshotVersion` — prefer JSON in existing column to avoid migration if size OK).
+- [x] If DB column stays string: `JSON.stringify({ version: 2, entryPoint, files })`.
+- [x] `SnapshotService.saveCurrent()` reads full `ProjectDocument`.
+- [x] Restore: apply bulk op or replace doc (prefer OT-friendly: set entire `files` object via composed ops; or `doc.fetch` + server-side restore endpoint that writes doc).
 
 **Files:**
 - `backend/src/snapshots/snapshotService.ts`
@@ -385,7 +385,7 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** History list shows file count + entry point in summary.
 
 **Tasks:**
-- [ ] Parse snapshot metadata on list; display `3 files · entry main.js`.
+- [x] Parse snapshot metadata on list; display `3 files · entry main.js`.
 
 **COMMIT:** `feat(snapshots): show file count in history list`
 

@@ -167,6 +167,7 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `POST` | `/api/rooms/:id/snapshots` | ✅ | Snapshot current ShareDB doc |
 | `GET` | `/api/rooms/:id/snapshots` | ✅ | List snapshots |
 | `GET` | `/api/rooms/:id/snapshots/:snapshotId` | ✅ | Get snapshot detail (content) |
+| `POST` | `/api/rooms/:id/snapshots/:snapshotId/restore` | ✅ | Restore snapshot to live project (broadcast) |
 | `POST` | `/api/execute` | ✅ + 10/min | Run code (Piston) |
 | `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review |
 | `POST` | `/api/review/stream` | ✅ + 5/min | SSE: `event: chunk|result|error` |

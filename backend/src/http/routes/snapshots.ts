@@ -54,5 +54,16 @@ export function buildSnapshotRouter({
     }
   });
 
+  router.post('/:snapshotId/restore', requireAuth, rateLimit, async (req, res, next) => {
+    try {
+      const { roomId, snapshotId } = snapshotIdParam.parse(req.params);
+      if (!req.user) throw new AppError('Missing user', 500, 'INTERNAL_ERROR');
+      const snapshot = await snapshotService.restore(roomId, snapshotId);
+      res.json({ data: snapshot });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

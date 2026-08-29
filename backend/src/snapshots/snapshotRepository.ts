@@ -1,14 +1,14 @@
 import type { PrismaClient } from '@prisma/client';
-import type { SnapshotDetail, SnapshotSummary } from '@/snapshots/types.js';
+import type { SnapshotRow } from '@/snapshots/types.js';
 
 export interface SnapshotRepository {
   create(input: {
     roomId: string;
     content: string;
     createdBy: string | null;
-  }): Promise<SnapshotDetail>;
-  list(roomId: string): Promise<SnapshotSummary[]>;
-  findById(roomId: string, snapshotId: string): Promise<SnapshotDetail | null>;
+  }): Promise<SnapshotRow>;
+  list(roomId: string): Promise<SnapshotRow[]>;
+  findById(roomId: string, snapshotId: string): Promise<SnapshotRow | null>;
   countForRoom(roomId: string): Promise<number>;
   deleteOldest(roomId: string, keep: number): Promise<number>;
 }
@@ -20,7 +20,7 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
     roomId: string;
     content: string;
     createdBy: string | null;
-  }): Promise<SnapshotDetail> {
+  }): Promise<SnapshotRow> {
     const row = await this.prisma.snapshot.create({
       data: {
         roomId: input.roomId,
@@ -35,12 +35,11 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
       createdAt: row.createdAt.toISOString(),
       createdBy: row.createdBy,
       createdByUsername: row.author?.username ?? null,
-      byteSize: Buffer.byteLength(row.content, 'utf8'),
       content: row.content,
     };
   }
 
-  async list(roomId: string): Promise<SnapshotSummary[]> {
+  async list(roomId: string): Promise<SnapshotRow[]> {
     const rows = await this.prisma.snapshot.findMany({
       where: { roomId },
       orderBy: { createdAt: 'desc' },
@@ -52,11 +51,11 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
       createdAt: row.createdAt.toISOString(),
       createdBy: row.createdBy,
       createdByUsername: row.author?.username ?? null,
-      byteSize: Buffer.byteLength(row.content, 'utf8'),
+      content: row.content,
     }));
   }
 
-  async findById(roomId: string, snapshotId: string): Promise<SnapshotDetail | null> {
+  async findById(roomId: string, snapshotId: string): Promise<SnapshotRow | null> {
     const row = await this.prisma.snapshot.findFirst({
       where: { id: snapshotId, roomId },
       include: { author: { select: { username: true } } },
@@ -68,7 +67,6 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
       createdAt: row.createdAt.toISOString(),
       createdBy: row.createdBy,
       createdByUsername: row.author?.username ?? null,
-      byteSize: Buffer.byteLength(row.content, 'utf8'),
       content: row.content,
     };
   }

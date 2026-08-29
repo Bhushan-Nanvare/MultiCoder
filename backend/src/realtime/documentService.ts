@@ -106,4 +106,44 @@ export class RealtimeDocumentService {
       connection.close();
     }
   }
+
+  /**
+   * Replaces the live project with `target` via JSON0 object replace ops so
+   * every connected client receives the restore.
+   */
+  async replaceProject(roomId: string, target: ProjectDocument): Promise<void> {
+    await this.migrateLegacyIfNeeded(roomId);
+
+    const connection = this.backend.connect();
+    const doc = connection.get(SHAREDB_COLLECTION, roomId);
+
+    try {
+      await fetchDoc(doc);
+      if (!doc.type || doc.data === undefined) {
+        throw new NotFoundError(`Room ${roomId} has no document`);
+      }
+
+      const current = normalizeDocument(doc.data);
+      const ops: Array<Record<string, unknown>> = [];
+
+      if (JSON.stringify(current.files) !== JSON.stringify(target.files)) {
+        ops.push({ p: ['files'], od: current.files, oi: target.files });
+      }
+      if (current.entryPoint !== target.entryPoint) {
+        ops.push({ p: ['entryPoint'], od: current.entryPoint, oi: target.entryPoint });
+      }
+
+      if (ops.length === 0) return;
+
+      await new Promise<void>((resolve, reject) => {
+        doc.submitOp(ops, { source: 'snapshot-restore' }, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      logger.info({ roomId, fileCount: Object.keys(target.files).length }, 'Restored project from snapshot');
+    } finally {
+      connection.close();
+    }
+  }
 }

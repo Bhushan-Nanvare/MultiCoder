@@ -140,6 +140,14 @@ export const api = {
     return json.data;
   },
 
+  async restoreSnapshot(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
+    const json = await request<{ data: SnapshotDetail }>(
+      `/api/rooms/${encodeURIComponent(roomId)}/snapshots/${encodeURIComponent(snapshotId)}/restore`,
+      { method: 'POST' },
+    );
+    return json.data;
+  },
+
   async checkPlagiarism(input: PlagiarismRequest): Promise<PlagiarismResult> {
     const json = await request<{ data: PlagiarismResult }>('/api/check-plagiarism', {
       method: 'POST',

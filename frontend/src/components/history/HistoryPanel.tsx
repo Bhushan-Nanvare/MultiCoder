@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { SnapshotSummary } from '@/types/snapshot';
 
 interface HistoryPanelProps {
@@ -100,7 +101,7 @@ export function HistoryPanel({
         {!loading && snapshots.length === 0 && (
           <p style={{ opacity: 0.55 }}>
             No snapshots yet. Click <strong>Save snapshot now</strong> to capture the current
-            document.
+            project.
           </p>
         )}
 
@@ -120,6 +121,13 @@ export function HistoryPanel({
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>
                       {new Date(snap.createdAt).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
+                      {snap.fileCount} {snap.fileCount === 1 ? 'file' : 'files'} · entry{' '}
+                      <code style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>
+                        {snap.entryPoint}
+                      </code>
+                      {snap.snapshotVersion === 1 ? ' · legacy' : ''}
                     </div>
                     <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
                       {snap.createdByUsername ? '@' + snap.createdByUsername : 'anonymous'} ·{' '}
@@ -159,7 +167,7 @@ export function HistoryPanel({
           lineHeight: 1.5,
         }}
       >
-        Restoring overwrites the live document for every connected peer.
+        Restoring overwrites the live project for every connected peer.
       </footer>
     </aside>
   );
@@ -171,7 +179,7 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const dismissButtonStyle: React.CSSProperties = {
+const dismissButtonStyle: CSSProperties = {
   background: 'transparent',
   color: '#94a3b8',
   border: 'none',
@@ -180,7 +188,7 @@ const dismissButtonStyle: React.CSSProperties = {
   lineHeight: 1,
 };
 
-const actionButtonStyle: React.CSSProperties = {
+const actionButtonStyle: CSSProperties = {
   flex: 1,
   color: 'white',
   border: 'none',
@@ -190,7 +198,7 @@ const actionButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const secondaryButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   background: '#0b1220',
   color: '#e2e8f0',
   border: '1px solid #334155',
@@ -200,7 +208,7 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const listStyle: React.CSSProperties = {
+const listStyle: CSSProperties = {
   listStyle: 'none',
   padding: 0,
   margin: 0,
@@ -208,7 +216,7 @@ const listStyle: React.CSSProperties = {
   gap: 8,
 };
 
-const liStyle: React.CSSProperties = {
+const liStyle: CSSProperties = {
   background: '#0f172a',
   border: '1px solid #1e293b',
   borderRadius: 6,

@@ -342,8 +342,7 @@ export function RoomPage(): JSX.Element {
       setRestoringSnapshotId(snapshotId);
       setSnapshotsError(null);
       try {
-        const snapshot = await api.getSnapshot(room.id, snapshotId);
-        editorRef.current?.setValue(snapshot.content);
+        await api.restoreSnapshot(room.id, snapshotId);
       } catch (err: unknown) {
         setSnapshotsError(err instanceof Error ? err.message : 'Failed to restore snapshot');
       } finally {

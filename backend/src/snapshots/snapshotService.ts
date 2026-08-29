@@ -1,12 +1,17 @@
 import {
   SNAPSHOT_MAX_CONTENT_BYTES,
   SNAPSHOT_MAX_PER_ROOM,
+  type SupportedLanguage,
 } from '@/constants/index.js';
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
-import { projectEntryContent } from '@/realtime/documentHelpers.js';
 import type { RoomService } from '@/rooms/roomService.js';
+import {
+  parseSnapshotContent,
+  serializeProjectSnapshot,
+  snapshotListMeta,
+} from '@/snapshots/snapshotPayload.js';
 import type { SnapshotRepository } from '@/snapshots/snapshotRepository.js';
-import type { SnapshotDetail, SnapshotSummary } from '@/snapshots/types.js';
+import type { SnapshotDetail, SnapshotRow, SnapshotSummary } from '@/snapshots/types.js';
 import { AppError, NotFoundError } from '@/utils/errors.js';
 import { logger } from '@/utils/logger.js';
 
@@ -18,9 +23,9 @@ export class SnapshotService {
   ) {}
 
   async saveCurrent(roomId: string, userId: string): Promise<SnapshotDetail> {
-    await this.roomService.get(roomId); // 404s if room doesn't exist
+    const room = await this.roomService.get(roomId);
     const doc = await this.documents.readDocument(roomId);
-    const content = projectEntryContent(doc);
+    const content = serializeProjectSnapshot(doc);
 
     if (Buffer.byteLength(content, 'utf8') > SNAPSHOT_MAX_CONTENT_BYTES) {
       throw new AppError(
@@ -30,35 +35,68 @@ export class SnapshotService {
       );
     }
 
-    const snapshot = await this.repository.create({
+    const row = await this.repository.create({
       roomId,
       content,
       createdBy: userId,
     });
 
-    // Best-effort retention enforcement; failure shouldn't block the save.
     this.enforceRetention(roomId).catch((err) => {
       logger.warn({ err, roomId }, 'Snapshot retention enforcement failed');
     });
 
     logger.info(
-      { roomId, snapshotId: snapshot.id, bytes: snapshot.byteSize },
+      { roomId, snapshotId: row.id, bytes: Buffer.byteLength(content, 'utf8') },
       'Saved room snapshot',
     );
-    return snapshot;
+    return this.toDetail(row, room.language);
   }
 
   async list(roomId: string): Promise<SnapshotSummary[]> {
-    await this.roomService.get(roomId);
-    return this.repository.list(roomId);
+    const room = await this.roomService.get(roomId);
+    const rows = await this.repository.list(roomId);
+    return rows.map((row) => this.toSummary(row, room.language));
   }
 
   async get(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
-    const snapshot = await this.repository.findById(roomId, snapshotId);
-    if (!snapshot) {
+    const room = await this.roomService.get(roomId);
+    const row = await this.repository.findById(roomId, snapshotId);
+    if (!row) {
       throw new NotFoundError(`Snapshot ${snapshotId} not found in room ${roomId}`);
     }
-    return snapshot;
+    return this.toDetail(row, room.language);
+  }
+
+  async restore(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
+    const detail = await this.get(roomId, snapshotId);
+    await this.documents.replaceProject(roomId, detail.project);
+    logger.info({ roomId, snapshotId }, 'Restored snapshot to live project');
+    return detail;
+  }
+
+  private toSummary(row: SnapshotRow, language: SupportedLanguage): SnapshotSummary {
+    const parsed = parseSnapshotContent(row.content, language);
+    const meta = snapshotListMeta(parsed);
+    return {
+      id: row.id,
+      roomId: row.roomId,
+      createdAt: row.createdAt,
+      createdBy: row.createdBy,
+      createdByUsername: row.createdByUsername,
+      byteSize: Buffer.byteLength(row.content, 'utf8'),
+      snapshotVersion: meta.snapshotVersion,
+      fileCount: meta.fileCount,
+      entryPoint: meta.entryPoint,
+    };
+  }
+
+  private toDetail(row: SnapshotRow, language: SupportedLanguage): SnapshotDetail {
+    const parsed = parseSnapshotContent(row.content, language);
+    return {
+      ...this.toSummary(row, language),
+      content: row.content,
+      project: parsed.project,
+    };
   }
 
   private async enforceRetention(roomId: string): Promise<void> {
