@@ -11,14 +11,17 @@ import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
 import { FilePathModal } from '@/components/project/FilePathModal';
 import { FileTree } from '@/components/project/FileTree';
+import { PresenceBar } from '@/components/project/PresenceBar';
 import { TabBar } from '@/components/project/TabBar';
 import { ReviewPanel } from '@/components/review/ReviewPanel';
+import { useAuth } from '@/auth/AuthContext';
 import type { ExecutionResult, RunScope } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
 import type { Room } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
+import { useRoomPresence } from '@/realtime/useRoomPresence';
 
 export function RoomPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -52,7 +55,14 @@ export function RoomPage(): JSX.Element {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
 
+  const { user } = useAuth();
   const project = useProjectDocument(id ?? '');
+  const presence = useRoomPresence({
+    roomId: id ?? '',
+    user,
+    activeFile: activeFilePath,
+    enabled: Boolean(id) && project.status === 'ready' && Boolean(user),
+  });
 
   useEffect(() => {
     if (project.status !== 'ready') return;
@@ -396,20 +406,23 @@ export function RoomPage(): JSX.Element {
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          style={{
-            background: '#1e293b',
-            color: '#e2e8f0',
-            border: '1px solid #334155',
-            borderRadius: 6,
-            padding: '6px 12px',
-            cursor: 'pointer',
-          }}
-        >
-          {copied ? 'Copied!' : 'Copy invite link'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {user && <PresenceBar local={user} peers={presence.peers} />}
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            style={{
+              background: '#1e293b',
+              color: '#e2e8f0',
+              border: '1px solid #334155',
+              borderRadius: 6,
+              padding: '6px 12px',
+              cursor: 'pointer',
+            }}
+          >
+            {copied ? 'Copied!' : 'Copy invite link'}
+          </button>
+        </div>
       </header>
       <EditorToolbar
         language={room.language}
@@ -466,6 +479,8 @@ export function RoomPage(): JSX.Element {
                 filePath={activeFilePath}
                 language={room.language}
                 docReady
+                remotePeers={presence.peers}
+                onLocalCursorChange={presence.updateCursor}
               />
             ) : (
               <div

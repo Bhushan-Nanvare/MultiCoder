@@ -400,9 +400,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Avatar strip in room header.
 
 **Tasks:**
-- [ ] Subscribe to doc presence in RoomPage or `useRoomPresence` hook.
-- [ ] Publish local presence: `{ userId, displayName, avatarUrl, activeFile }`.
-- [ ] `PresenceBar` component in header.
+- [x] Subscribe to doc presence in RoomPage or `useRoomPresence` hook.
+- [x] Publish local presence: `{ userId, displayName, avatarUrl, activeFile }`.
+- [x] `PresenceBar` component in header.
 
 **Files:**
 - `frontend/src/realtime/useRoomPresence.ts` (new)
@@ -420,10 +420,10 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** See collaborators' selections in the same file.
 
 **Tasks:**
-- [ ] Extend presence payload: `{ cursor: { line, column }, selection?: ... }`.
-- [ ] On Monaco cursor change (debounced), update presence.
-- [ ] Render remote cursors with Monaco decorations or `monaco-editor` content widgets; filter by `activeFile` match.
-- [ ] Assign stable color per `userId`.
+- [x] Extend presence payload: `{ cursor: { line, column }, selection?: ... }`.
+- [x] On Monaco cursor change (debounced), update presence.
+- [x] Render remote cursors with Monaco decorations or `monaco-editor` content widgets; filter by `activeFile` match.
+- [x] Assign stable color per `userId`.
 
 **Files:**
 - `frontend/src/realtime/remoteCursors.ts` (new)

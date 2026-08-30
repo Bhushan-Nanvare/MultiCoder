@@ -10,6 +10,8 @@ import {
 import type { editor } from 'monaco-editor';
 import type { Doc } from 'sharedb/lib/client';
 import { bindMonacoToShareDb } from '@/realtime/monacoShareDbBinding';
+import { attachRemoteCursors } from '@/realtime/remoteCursors';
+import type { PresenceCursor, PresenceSelection, RoomPresencePeer } from '@/realtime/presenceTypes';
 import { SHAREDB_COLLECTION, getShareDbConnection } from '@/realtime/sharedbConnection';
 import type { ProjectDocument, SupportedLanguage } from '@/types/room';
 
@@ -19,6 +21,8 @@ interface CollaborativeEditorProps {
   language: SupportedLanguage;
   /** When false, waits for the parent hook to finish subscribing. */
   docReady: boolean;
+  remotePeers?: RoomPresencePeer[];
+  onLocalCursorChange?: (cursor: PresenceCursor | null, selection: PresenceSelection | null) => void;
 }
 
 export interface CollaborativeEditorHandle {
@@ -40,7 +44,10 @@ const monacoLanguageMap: Record<SupportedLanguage, string> = {
 export const CollaborativeEditor = forwardRef<
   CollaborativeEditorHandle,
   CollaborativeEditorProps
->(function CollaborativeEditor({ roomId, filePath, language, docReady }, ref) {
+>(function CollaborativeEditor(
+  { roomId, filePath, language, docReady, remotePeers = [], onLocalCursorChange },
+  ref,
+) {
   const [status, setStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -98,6 +105,42 @@ export const CollaborativeEditor = forwardRef<
     editorRef.current = instance;
     bindEditor();
   };
+
+  useEffect(() => {
+    const instance = editorRef.current;
+    if (!instance || !docReady) return undefined;
+    return attachRemoteCursors(instance, remotePeers, filePath);
+  }, [remotePeers, filePath, docReady, status]);
+
+  useEffect(() => {
+    const instance = editorRef.current;
+    if (!instance || !onLocalCursorChange) return undefined;
+
+    const emit = (): void => {
+      const position = instance.getPosition();
+      const selection = instance.getSelection();
+      if (!position) {
+        onLocalCursorChange(null, null);
+        return;
+      }
+      const collapsed = !selection || selection.isEmpty();
+      onLocalCursorChange(
+        { line: position.lineNumber, column: position.column },
+        collapsed || !selection
+          ? null
+          : {
+              startLine: selection.startLineNumber,
+              startColumn: selection.startColumn,
+              endLine: selection.endLineNumber,
+              endColumn: selection.endColumn,
+            },
+      );
+    };
+
+    emit();
+    const disposable = instance.onDidChangeCursorSelection(() => emit());
+    return () => disposable.dispose();
+  }, [onLocalCursorChange, filePath, docReady, status]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
