@@ -5,6 +5,7 @@ import {
   createEmptyProjectDocument,
   isLegacyRoomDocument,
   normalizeDocument,
+  validateProjectDocument,
 } from '@/realtime/documentHelpers.js';
 import type { ProjectDocument } from '@/realtime/types.js';
 import { NotFoundError } from '@/utils/errors.js';
@@ -26,7 +27,11 @@ export class RealtimeDocumentService {
    * Creates the ShareDB document for a room if it doesn't already exist.
    * Idempotent — safe to call multiple times for the same room id.
    */
-  async initializeDocument(roomId: string, language: SupportedLanguage): Promise<void> {
+  async initializeDocument(
+    roomId: string,
+    language: SupportedLanguage,
+    initial?: ProjectDocument,
+  ): Promise<void> {
     const connection = this.backend.connect();
     const doc = connection.get(SHAREDB_COLLECTION, roomId);
 
@@ -34,9 +39,10 @@ export class RealtimeDocumentService {
       await fetchDoc(doc);
       if (doc.type) return;
 
-      const initial = createEmptyProjectDocument(language);
+      const payload = initial ?? createEmptyProjectDocument(language);
+      validateProjectDocument(payload);
       await new Promise<void>((resolve, reject) => {
-        doc.create(initial, (createErr) => {
+        doc.create(payload, (createErr) => {
           if (createErr) reject(createErr);
           else resolve();
         });

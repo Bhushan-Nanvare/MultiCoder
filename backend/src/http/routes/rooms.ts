@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { SUPPORTED_LANGUAGES } from '@/constants/index.js';
+import { listProjectTemplates, PROJECT_TEMPLATE_IDS } from '@/projects/templates/index.js';
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import { AppError } from '@/utils/errors.js';
@@ -8,6 +9,7 @@ import { AppError } from '@/utils/errors.js';
 const createRoomBody = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   language: z.enum(SUPPORTED_LANGUAGES).optional(),
+  templateId: z.enum(PROJECT_TEMPLATE_IDS).optional(),
 });
 
 const roomIdParam = z.object({
@@ -26,6 +28,10 @@ export function buildRoomRouter({
   requireAuth,
 }: BuildRoomRouterOptions): Router {
   const router = Router();
+
+  router.get('/templates', requireAuth, (_req, res) => {
+    res.json({ data: listProjectTemplates() });
+  });
 
   router.post('/', requireAuth, async (req, res, next) => {
     try {

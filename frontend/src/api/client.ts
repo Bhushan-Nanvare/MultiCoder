@@ -9,7 +9,7 @@ import type {
   ReviewStreamCallbacks,
   ReviewStreamEvent,
 } from '@/types/review';
-import type { Room, SupportedLanguage } from '@/types/room';
+import type { ProjectTemplateId, ProjectTemplateSummary, Room, SupportedLanguage } from '@/types/room';
 import type { SnapshotDetail, SnapshotSummary } from '@/types/snapshot';
 
 interface ApiErrorBody {
@@ -63,11 +63,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  async createRoom(input: { name?: string; language?: SupportedLanguage } = {}): Promise<Room> {
+  async createRoom(
+    input: {
+      name?: string;
+      language?: SupportedLanguage;
+      templateId?: ProjectTemplateId;
+    } = {},
+  ): Promise<Room> {
     const json = await request<{ data: Room }>('/api/rooms', {
       method: 'POST',
       body: JSON.stringify(input),
     });
+    return json.data;
+  },
+
+  async listRoomTemplates(): Promise<ProjectTemplateSummary[]> {
+    const json = await request<{ data: ProjectTemplateSummary[] }>('/api/rooms/templates');
     return json.data;
   },
 

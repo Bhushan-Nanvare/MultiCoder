@@ -1,18 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
-import { SUPPORTED_LANGUAGES, type Room, type SupportedLanguage } from '@/types/room';
+import {
+  SUPPORTED_LANGUAGES,
+  type ProjectTemplateId,
+  type ProjectTemplateSummary,
+  type Room,
+  type SupportedLanguage,
+} from '@/types/room';
 
 export function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [templates, setTemplates] = useState<ProjectTemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('javascript');
+  const [templateId, setTemplateId] = useState<ProjectTemplateId | ''>('');
+
+  const selectedTemplate = templates.find((template) => template.id === templateId);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,17 +37,42 @@ export function DashboardPage(): JSX.Element {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+    api
+      .listRoomTemplates()
+      .then((starterTemplates) => {
+        if (!cancelled) setTemplates(starterTemplates);
+      })
+      .catch(() => {
+        /* Blank create still works; picker lists only Blank. */
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const handleCreate = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleTemplateChange = (value: string): void => {
+    if (value === '') {
+      setTemplateId('');
+      return;
+    }
+    const next = templates.find((template) => template.id === value);
+    if (!next) return;
+    setTemplateId(next.id);
+    setLanguage(next.language);
+  };
+
+  const handleCreate = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setCreating(true);
     setError(null);
     try {
-      const room = await api.createRoom({ name: name.trim() || undefined, language });
+      const room = await api.createRoom({
+        name: name.trim() || undefined,
+        language: selectedTemplate?.language ?? language,
+        ...(templateId ? { templateId } : {}),
+      });
       navigate(`/rooms/${room.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create room');
@@ -114,11 +149,30 @@ export function DashboardPage(): JSX.Element {
             />
           </label>
           <label style={{ display: 'grid', gap: 4 }}>
+            <span>Template</span>
+            <select
+              value={templateId}
+              onChange={(event) => handleTemplateChange(event.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Blank (empty project)</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} — {template.fileCount} file{template.fileCount === 1 ? '' : 's'}
+                </option>
+              ))}
+            </select>
+            {selectedTemplate && (
+              <span style={{ fontSize: 12, opacity: 0.7 }}>{selectedTemplate.description}</span>
+            )}
+          </label>
+          <label style={{ display: 'grid', gap: 4 }}>
             <span>Language</span>
             <select
               value={language}
               onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}
               style={inputStyle}
+              disabled={Boolean(selectedTemplate)}
             >
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <option key={lang} value={lang}>
@@ -126,6 +180,11 @@ export function DashboardPage(): JSX.Element {
                 </option>
               ))}
             </select>
+            {selectedTemplate && (
+              <span style={{ fontSize: 12, opacity: 0.7 }}>
+                Locked to {selectedTemplate.language} for this template.
+              </span>
+            )}
           </label>
           <button type="submit" disabled={creating} style={buttonStyle}>
             {creating ? 'Creating…' : 'Create room'}
@@ -171,7 +230,7 @@ export function DashboardPage(): JSX.Element {
   );
 }
 
-const cardStyle: React.CSSProperties = {
+const cardStyle: CSSProperties = {
   background: '#111827',
   border: '1px solid #1f2937',
   borderRadius: 8,
@@ -179,7 +238,7 @@ const cardStyle: React.CSSProperties = {
   marginTop: 24,
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   background: '#0b1220',
   color: '#e2e8f0',
   border: '1px solid #334155',
@@ -188,7 +247,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
 };
 
-const buttonStyle: React.CSSProperties = {
+const buttonStyle: CSSProperties = {
   background: '#2563eb',
   color: 'white',
   border: 'none',

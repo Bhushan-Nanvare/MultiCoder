@@ -7,6 +7,7 @@ import {
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
 import type { RoomRepository } from '@/rooms/roomRepository.js';
 import type { CreateRoomInput, Room } from '@/rooms/types.js';
+import { projectDocumentForNewRoom } from '@/projects/templates/index.js';
 import { NotFoundError } from '@/utils/errors.js';
 
 export class RoomService {
@@ -18,7 +19,8 @@ export class RoomService {
   async create(input: CreateRoomInput): Promise<Room> {
     const id = nanoid(ROOM_ID_LENGTH);
     const now = new Date().toISOString();
-    const language: SupportedLanguage = input.language ?? DEFAULT_ROOM_LANGUAGE;
+    const seeded = projectDocumentForNewRoom(input.language ?? DEFAULT_ROOM_LANGUAGE, input.templateId);
+    const language: SupportedLanguage = seeded.language;
     const room: Room = {
       id,
       name: input.name?.trim() || `Untitled room ${id}`,
@@ -29,7 +31,7 @@ export class RoomService {
     };
 
     const created = await this.repository.create(room);
-    await this.documents.initializeDocument(id, language);
+    await this.documents.initializeDocument(id, language, seeded.document);
     return created;
   }
 

@@ -47,6 +47,24 @@ export const ENTRY_POINT_BY_LANGUAGE: Record<SupportedLanguage, string> = {
 };
 
 export const PROJECT_DOCUMENT_VERSION = 2 as const;
+
+export const PROJECT_TEMPLATE_IDS = [
+  'javascript-starter',
+  'python-starter',
+  'node-two-file',
+  'cpp-starter',
+] as const;
+
+export type ProjectTemplateId = (typeof PROJECT_TEMPLATE_IDS)[number];
+
+export interface ProjectTemplateSummary {
+  id: ProjectTemplateId;
+  name: string;
+  description: string;
+  language: SupportedLanguage;
+  entryPoint: string;
+  fileCount: number;
+}
 export const MAX_FILES_PER_ROOM = 50;
 export const MAX_FILE_BYTES = 64 * 1024;
 export const MAX_PROJECT_PATH_LENGTH = 256;

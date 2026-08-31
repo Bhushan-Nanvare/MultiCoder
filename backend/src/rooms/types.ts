@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from '@/constants/index.js';
+import type { ProjectTemplateId } from '@/projects/templates/types.js';
 
 export interface Room {
   id: string;
@@ -12,5 +13,6 @@ export interface Room {
 export interface CreateRoomInput {
   name?: string;
   language?: SupportedLanguage;
+  templateId?: ProjectTemplateId;
   ownerId?: string | null;
 }

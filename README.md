@@ -161,7 +161,8 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `GET` | `/auth/github/callback` | — | OAuth callback (sets session cookie, redirects to dashboard) |
 | `POST` | `/auth/logout` | — | Clears session cookie |
 | `GET` | `/api/user/me` | ✅ | Current user |
-| `POST` | `/api/rooms` | ✅ | Create room |
+| `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`) |
+| `GET` | `/api/rooms/templates` | ✅ | Starter project templates |
 | `GET` | `/api/rooms` | ✅ | List caller's rooms |
 | `GET` | `/api/rooms/:id` | — | Get room (public — invite links work) |
 | `POST` | `/api/rooms/:id/snapshots` | ✅ | Snapshot current ShareDB doc |

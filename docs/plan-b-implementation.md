@@ -454,12 +454,15 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Create room from a starter structure.
 
 **Tasks:**
-- [ ] Add `backend/src/projects/templates/` — JSON or TS modules:
-  - `javascript-starter` — `main.js`, `utils.js`
-  - `python-starter` — `main.py`
-  - `node-two-file` — `index.js`, `helper.js`
-- [ ] Extend `POST /api/rooms` body: optional `templateId`.
-- [ ] `initializeDocument()` seeds files from template.
+- [x] Add `backend/src/projects/templates/` — TS modules:
+  - `javascript-starter` — `main.js` + `utils.js` (CommonJS; Run works)
+  - `python-starter` — `main.py` + `utils.py`
+  - `node-two-file` — `index.js` + `helper.js`
+  - `cpp-starter` — `main.cpp` (Piston compiles the entry file only)
+- [x] `GET /api/rooms/templates` (registered before `GET /:id`).
+- [x] Extend `POST /api/rooms` body: optional `templateId` (overrides `language` to match the template).
+- [x] `initializeDocument()` seeds files from a cloned template document.
+- [x] Dashboard template picker (blank = empty project).
 
 **Files:**
 - `backend/src/projects/templates/*` (new)
@@ -578,7 +581,7 @@ After Stage 2+, update these to be project-aware:
 - [ ] **Run project** executes entry point with all files in Piston.
 - [ ] **Snapshots** save/restore entire project; restore broadcasts.
 - [ ] **Presence** shows who is online; **cursors** visible in shared files.
-- [ ] At least **one template** on room create.
+- [x] At least **one template** on room create.
 - [ ] README updated with multi-file usage screenshots or GIF.
 
 When all boxes checked → merge `feat/plan-b-multi-file` → tag `v2.0.0`.
