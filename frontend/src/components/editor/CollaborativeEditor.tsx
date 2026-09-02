@@ -23,6 +23,7 @@ interface CollaborativeEditorProps {
   docReady: boolean;
   remotePeers?: RoomPresencePeer[];
   onLocalCursorChange?: (cursor: PresenceCursor | null, selection: PresenceSelection | null) => void;
+  readOnly?: boolean;
 }
 
 export interface CollaborativeEditorHandle {
@@ -45,7 +46,7 @@ export const CollaborativeEditor = forwardRef<
   CollaborativeEditorHandle,
   CollaborativeEditorProps
 >(function CollaborativeEditor(
-  { roomId, filePath, language, docReady, remotePeers = [], onLocalCursorChange },
+  { roomId, filePath, language, docReady, remotePeers = [], onLocalCursorChange, readOnly = false },
   ref,
 ) {
   const [status, setStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
@@ -79,7 +80,7 @@ export const CollaborativeEditor = forwardRef<
 
     try {
       disposerRef.current?.();
-      disposerRef.current = bindMonacoToShareDb(editorInstance, doc, filePath);
+      disposerRef.current = bindMonacoToShareDb(editorInstance, doc, filePath, readOnly);
       setStatus('ready');
       setErrorMessage(null);
     } catch (bindErr) {
@@ -91,7 +92,7 @@ export const CollaborativeEditor = forwardRef<
       disposerRef.current?.();
       disposerRef.current = null;
     };
-  }, [roomId, filePath, docReady]);
+  }, [roomId, filePath, docReady, readOnly]);
 
   useEffect(() => {
     if (!docReady) {
@@ -142,6 +143,10 @@ export const CollaborativeEditor = forwardRef<
     return () => disposable.dispose();
   }, [onLocalCursorChange, filePath, docReady, status]);
 
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly });
+  }, [readOnly]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <div
@@ -157,6 +162,7 @@ export const CollaborativeEditor = forwardRef<
         {status === 'ready' && (
           <span>
             Connected · {filePath} · room {roomId}
+            {readOnly ? ' · view only' : ''}
           </span>
         )}
         {status === 'error' && <span style={{ color: '#f87171' }}>Error: {errorMessage}</span>}
@@ -174,6 +180,7 @@ export const CollaborativeEditor = forwardRef<
             automaticLayout: true,
             tabSize: 2,
             wordWrap: 'on',
+            readOnly,
           }}
           onMount={handleMount}
         />

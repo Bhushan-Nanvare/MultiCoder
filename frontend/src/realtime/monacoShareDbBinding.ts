@@ -30,6 +30,7 @@ export function bindMonacoToShareDb(
   monacoEditor: editor.IStandaloneCodeEditor,
   doc: Doc<ProjectDocument>,
   filePath: string,
+  readOnly = false,
 ): () => void {
   const model = monacoEditor.getModel();
   if (!model) {
@@ -51,7 +52,7 @@ export function bindMonacoToShareDb(
   syncFromDoc();
 
   const localChangeListener = monacoEditor.onDidChangeModelContent((event) => {
-    if (applyingRemote) return;
+    if (applyingRemote || readOnly) return;
 
     const normalized = normalizeProjectDocument(doc.data);
     const docContent = fileContent(normalized, filePath);

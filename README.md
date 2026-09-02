@@ -161,10 +161,11 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `GET` | `/auth/github/callback` | — | OAuth callback (sets session cookie, redirects to dashboard) |
 | `POST` | `/auth/logout` | — | Clears session cookie |
 | `GET` | `/api/user/me` | ✅ | Current user |
-| `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`) |
+| `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`, `visibility`) |
 | `GET` | `/api/rooms/templates` | ✅ | Starter project templates |
 | `GET` | `/api/rooms` | ✅ | List caller's rooms |
-| `GET` | `/api/rooms/:id` | — | Get room (public — invite links work) |
+| `PATCH` | `/api/rooms/:id` | ✅ | Owner updates `visibility` |
+| `GET` | `/api/rooms/:id` | cookie optional | Get room; `private` is owner-only; `link-view` allows anonymous read |
 | `POST` | `/api/rooms/:id/snapshots` | ✅ | Snapshot current ShareDB doc |
 | `GET` | `/api/rooms/:id/snapshots` | ✅ | List snapshots |
 | `GET` | `/api/rooms/:id/snapshots/:snapshotId` | ✅ | Get snapshot detail (content) |
@@ -173,7 +174,7 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review |
 | `POST` | `/api/review/stream` | ✅ + 5/min | SSE: `event: chunk|result|error` |
 | `POST` | `/api/check-plagiarism` | ✅ + 20/min | Submit/check fingerprints |
-| WS upgrade | `/sharedb` | ✅ (cookie) | ShareDB JSON traffic, JWT-verified pre-upgrade |
+| WS upgrade | `/sharedb` | cookie optional | Anonymous allowed for `link-view` reads; invalid JWT still 401 |
 
 All error responses share `{ error: { code, message, details? } }`.
 

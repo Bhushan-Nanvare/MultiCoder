@@ -7,6 +7,7 @@ import {
   type ProjectTemplateId,
   type ProjectTemplateSummary,
   type Room,
+  type RoomVisibility,
   type SupportedLanguage,
 } from '@/types/room';
 
@@ -21,6 +22,7 @@ export function DashboardPage(): JSX.Element {
   const [name, setName] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('javascript');
   const [templateId, setTemplateId] = useState<ProjectTemplateId | ''>('');
+  const [visibility, setVisibility] = useState<RoomVisibility>('link-edit');
 
   const selectedTemplate = templates.find((template) => template.id === templateId);
 
@@ -71,6 +73,7 @@ export function DashboardPage(): JSX.Element {
       const room = await api.createRoom({
         name: name.trim() || undefined,
         language: selectedTemplate?.language ?? language,
+        visibility,
         ...(templateId ? { templateId } : {}),
       });
       navigate(`/rooms/${room.id}`);
@@ -186,6 +189,18 @@ export function DashboardPage(): JSX.Element {
               </span>
             )}
           </label>
+          <label style={{ display: 'grid', gap: 4 }}>
+            <span>Who can open this room</span>
+            <select
+              value={visibility}
+              onChange={(event) => setVisibility(event.target.value as RoomVisibility)}
+              style={inputStyle}
+            >
+              <option value="link-edit">Anyone with the link can edit</option>
+              <option value="link-view">Anyone with the link can view (read-only)</option>
+              <option value="private">Private — only you</option>
+            </select>
+          </label>
           <button type="submit" disabled={creating} style={buttonStyle}>
             {creating ? 'Creating…' : 'Create room'}
           </button>
@@ -216,7 +231,8 @@ export function DashboardPage(): JSX.Element {
               <div>
                 <div style={{ fontWeight: 600 }}>{room.name}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {room.language} · created {new Date(room.createdAt).toLocaleString()}
+                  {room.language} · {room.visibility} · created{' '}
+                  {new Date(room.createdAt).toLocaleString()}
                 </div>
               </div>
               <Link to={`/rooms/${room.id}`} style={{ color: '#60a5fa' }}>

@@ -32,3 +32,25 @@ export function buildRequireAuth(authService: AuthService): RequestHandler {
     }
   };
 }
+
+/**
+ * Hydrates req.user when a valid session cookie is present; otherwise continues
+ * as anonymous. Invalid cookies are ignored so public link-view rooms still load.
+ */
+export function buildOptionalAuth(authService: AuthService): RequestHandler {
+  return async (req, _res, next) => {
+    try {
+      const token = req.cookies?.[SESSION_COOKIE_NAME];
+      if (typeof token !== 'string' || token.length === 0) {
+        next();
+        return;
+      }
+      const payload = verifySessionToken(token);
+      const user = await authService.getUserById(payload.sub);
+      if (user) req.user = user;
+      next();
+    } catch {
+      next();
+    }
+  };
+}

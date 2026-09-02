@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { api } from '@/api/client';
 import {
   CollaborativeEditor,
@@ -18,13 +18,15 @@ import { useAuth } from '@/auth/AuthContext';
 import type { ExecutionResult, RunScope } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
-import type { Room } from '@/types/room';
+import type { Room, RoomVisibility } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
 import { useRoomPresence } from '@/realtime/useRoomPresence';
 
 export function RoomPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const { user, status: authStatus, login } = useAuth();
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -55,13 +57,13 @@ export function RoomPage(): JSX.Element {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
 
-  const { user } = useAuth();
-  const project = useProjectDocument(id ?? '');
+  const canEdit = Boolean(room?.canEdit);
+  const project = useProjectDocument(room?.id ?? '');
   const presence = useRoomPresence({
-    roomId: id ?? '',
+    roomId: room?.id ?? '',
     user,
     activeFile: activeFilePath,
-    enabled: Boolean(id) && project.status === 'ready' && Boolean(user),
+    enabled: Boolean(room?.id) && project.status === 'ready' && Boolean(user),
   });
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function RoomPage(): JSX.Element {
   }, [project.status, project.files, project.entryPoint]);
 
   useEffect(() => {
-    if (!id) return undefined;
+    if (!id || authStatus === 'loading') return undefined;
     let cancelled = false;
     api
       .getRoom(id)
@@ -91,7 +93,7 @@ export function RoomPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, authStatus]);
 
   const handleCopyLink = async (): Promise<void> => {
     await navigator.clipboard.writeText(window.location.href);
@@ -121,7 +123,7 @@ export function RoomPage(): JSX.Element {
 
   const handleCreateFile = useCallback(
     async (path: string): Promise<void> => {
-      if (!room) return;
+      if (!room || !canEdit) return;
       setTreeBusy(true);
       setTreeError(null);
       try {
@@ -134,7 +136,7 @@ export function RoomPage(): JSX.Element {
         setTreeBusy(false);
       }
     },
-    [room, project.addFile, openFile],
+    [room, canEdit, project.addFile, openFile],
   );
 
   const handleRenameFile = useCallback(
@@ -348,7 +350,7 @@ export function RoomPage(): JSX.Element {
 
   const handleRestoreSnapshot = useCallback(
     async (snapshotId: string): Promise<void> => {
-      if (!room) return;
+      if (!room || !canEdit) return;
       setRestoringSnapshotId(snapshotId);
       setSnapshotsError(null);
       try {
@@ -359,19 +361,61 @@ export function RoomPage(): JSX.Element {
         setRestoringSnapshotId(null);
       }
     },
+    [room, canEdit],
+  );
+
+  const handleVisibilityChange = useCallback(
+    async (visibility: RoomVisibility): Promise<void> => {
+      if (!room) return;
+      try {
+        const next = await api.updateRoomVisibility(room.id, visibility);
+        setRoom(next);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to update visibility');
+      }
+    },
     [room],
   );
 
   useEffect(() => () => reviewAbortRef.current?.abort(), []);
 
+  if (authStatus === 'loading') {
+    return <FullScreenMessage>Checking session…</FullScreenMessage>;
+  }
   if (!id) {
     return <FullScreenMessage>Missing room id.</FullScreenMessage>;
   }
   if (error) {
-    return <FullScreenMessage variant="error">{error}</FullScreenMessage>;
+    return (
+      <FullScreenMessage variant="error">
+        <div style={{ textAlign: 'center' }}>
+          <div>{error}</div>
+          {authStatus === 'unauthenticated' && (
+            <button
+              type="button"
+              onClick={login}
+              style={{
+                marginTop: 16,
+                background: '#1e293b',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                padding: '8px 14px',
+                cursor: 'pointer',
+              }}
+            >
+              Sign in with GitHub
+            </button>
+          )}
+        </div>
+      </FullScreenMessage>
+    );
   }
   if (!room) {
     return <FullScreenMessage>Loading room…</FullScreenMessage>;
+  }
+  if (authStatus === 'unauthenticated' && room.visibility !== 'link-view') {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return (
@@ -403,11 +447,47 @@ export function RoomPage(): JSX.Element {
             <div style={{ fontWeight: 600 }}>{room.name}</div>
             <div style={{ fontSize: 12, opacity: 0.6 }}>
               {room.language} · {room.id}
+              {!canEdit ? ' · view only' : ''}
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {room.isOwner && (
+            <select
+              value={room.visibility}
+              onChange={(event) => void handleVisibilityChange(event.target.value as RoomVisibility)}
+              title="Who can open this room"
+              style={{
+                background: '#0b1220',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                padding: '6px 8px',
+                fontSize: 12,
+              }}
+            >
+              <option value="link-edit">Link can edit</option>
+              <option value="link-view">Link can view</option>
+              <option value="private">Private</option>
+            </select>
+          )}
           {user && <PresenceBar local={user} peers={presence.peers} />}
+          {!user && (
+            <button
+              type="button"
+              onClick={login}
+              style={{
+                background: '#1e293b',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                padding: '6px 12px',
+                cursor: 'pointer',
+              }}
+            >
+              Sign in to edit
+            </button>
+          )}
           <button
             type="button"
             onClick={handleCopyLink}
@@ -428,7 +508,8 @@ export function RoomPage(): JSX.Element {
         language={room.language}
         entryPoint={project.entryPoint}
         entryPointFiles={project.files}
-        entryPointDisabled={project.status !== 'ready'}
+        entryPointDisabled={project.status !== 'ready' || !canEdit}
+        readOnly={!canEdit}
         onEntryPointChange={handleEntryPointChange}
         runScope={runScope}
         onRunScopeChange={setRunScope}
@@ -447,6 +528,7 @@ export function RoomPage(): JSX.Element {
           activeFile={activeFilePath}
           entryPoint={project.entryPoint}
           disabled={project.status !== 'ready' || treeBusy}
+          readOnly={!canEdit}
           onSelect={openFile}
           onNewFile={() => {
             setTreeError(null);
@@ -481,6 +563,7 @@ export function RoomPage(): JSX.Element {
                 docReady
                 remotePeers={presence.peers}
                 onLocalCursorChange={presence.updateCursor}
+                readOnly={!canEdit}
               />
             ) : (
               <div
@@ -558,6 +641,7 @@ export function RoomPage(): JSX.Element {
         onRefresh={refreshSnapshots}
         onRestore={handleRestoreSnapshot}
         onDismiss={() => setHistoryOpen(false)}
+        readOnly={!canEdit}
       />
     </div>
   );

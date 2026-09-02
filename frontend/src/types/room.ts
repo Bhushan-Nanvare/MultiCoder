@@ -27,9 +27,16 @@ export interface Room {
   id: string;
   name: string;
   language: SupportedLanguage;
+  visibility: RoomVisibility;
+  ownerId?: string | null;
   createdAt: string;
   updatedAt: string;
+  canEdit: boolean;
+  isOwner: boolean;
 }
+
+export const ROOM_VISIBILITIES = ['private', 'link-edit', 'link-view'] as const;
+export type RoomVisibility = (typeof ROOM_VISIBILITIES)[number];
 
 /**
  * @deprecated Replaced by ProjectDocument after Stage 1 migration.

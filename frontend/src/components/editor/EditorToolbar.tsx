@@ -18,6 +18,7 @@ interface EditorToolbarProps {
   checkingPlagiarism: boolean;
   onToggleHistory: () => void;
   historyOpen: boolean;
+  readOnly?: boolean;
 }
 
 export function EditorToolbar({
@@ -36,6 +37,7 @@ export function EditorToolbar({
   checkingPlagiarism,
   onToggleHistory,
   historyOpen,
+  readOnly = false,
 }: EditorToolbarProps): JSX.Element {
   return (
     <div
@@ -64,7 +66,7 @@ export function EditorToolbar({
       <EntryPointPicker
         files={entryPointFiles}
         entryPoint={entryPoint}
-        disabled={entryPointDisabled}
+        disabled={entryPointDisabled || readOnly}
         onChange={onEntryPointChange}
       />
       <div

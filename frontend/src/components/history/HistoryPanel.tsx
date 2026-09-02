@@ -12,6 +12,7 @@ interface HistoryPanelProps {
   onRefresh: () => void;
   onRestore: (snapshotId: string) => void;
   onDismiss: () => void;
+  readOnly?: boolean;
 }
 
 export function HistoryPanel({
@@ -25,6 +26,7 @@ export function HistoryPanel({
   onRefresh,
   onRestore,
   onDismiss,
+  readOnly = false,
 }: HistoryPanelProps): JSX.Element | null {
   if (!open) return null;
 
@@ -78,7 +80,7 @@ export function HistoryPanel({
         <button
           type="button"
           onClick={onSave}
-          disabled={savingNow}
+          disabled={savingNow || readOnly}
           style={{
             ...actionButtonStyle,
             background: savingNow ? '#1f2937' : '#2563eb',
@@ -142,7 +144,7 @@ export function HistoryPanel({
                   <button
                     type="button"
                     onClick={() => onRestore(snap.id)}
-                    disabled={restoring}
+                    disabled={restoring || readOnly}
                     style={{
                       ...secondaryButtonStyle,
                       whiteSpace: 'nowrap',

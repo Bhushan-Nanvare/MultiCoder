@@ -37,7 +37,7 @@ export function buildSnapshotRouter({
   router.get('/', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = roomIdParam.parse(req.params);
-      const snapshots = await snapshotService.list(roomId);
+      const snapshots = await snapshotService.list(roomId, req.user?.id ?? null);
       res.json({ data: snapshots });
     } catch (err) {
       next(err);
@@ -47,7 +47,7 @@ export function buildSnapshotRouter({
   router.get('/:snapshotId', requireAuth, async (req, res, next) => {
     try {
       const { roomId, snapshotId } = snapshotIdParam.parse(req.params);
-      const snapshot = await snapshotService.get(roomId, snapshotId);
+      const snapshot = await snapshotService.get(roomId, snapshotId, req.user?.id ?? null);
       res.json({ data: snapshot });
     } catch (err) {
       next(err);
@@ -58,7 +58,7 @@ export function buildSnapshotRouter({
     try {
       const { roomId, snapshotId } = snapshotIdParam.parse(req.params);
       if (!req.user) throw new AppError('Missing user', 500, 'INTERNAL_ERROR');
-      const snapshot = await snapshotService.restore(roomId, snapshotId);
+      const snapshot = await snapshotService.restore(roomId, snapshotId, req.user.id);
       res.json({ data: snapshot });
     } catch (err) {
       next(err);

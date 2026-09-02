@@ -8,10 +8,11 @@ import { disconnectPrisma, getPrismaClient } from '@/db/prismaClient.js';
 import { ExecutionService } from '@/execution/executionService.js';
 import { PistonClient } from '@/execution/pistonClient.js';
 import { buildApp } from '@/http/app.js';
-import { buildRequireAuth } from '@/http/middleware/auth.js';
+import { buildOptionalAuth, buildRequireAuth } from '@/http/middleware/auth.js';
 import { PlagiarismService } from '@/plagiarism/plagiarismService.js';
 import { PrismaSnippetRepository } from '@/plagiarism/snippetRepository.js';
 import { RealtimeDocumentService } from '@/realtime/documentService.js';
+import { installRoomAccessMiddleware } from '@/realtime/shareDbAccess.js';
 import { createShareDbBackend } from '@/realtime/shareDbBackend.js';
 import { attachShareDbWebSocket } from '@/realtime/wsServer.js';
 import { PrismaRoomRepository } from '@/rooms/prismaRoomRepository.js';
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
   const userRepository = new PrismaUserRepository(prisma);
   const authService = new AuthService(userRepository);
   const requireAuth = buildRequireAuth(authService);
+  const optionalAuth = buildOptionalAuth(authService);
 
   const pistonClient = new PistonClient(config.pistonBaseUrl);
   const executionService = new ExecutionService(pistonClient);
@@ -58,9 +60,11 @@ async function main(): Promise<void> {
     plagiarismService,
     snapshotService,
     requireAuth,
+    optionalAuth,
   });
   const server = createServer(app);
 
+  installRoomAccessMiddleware(backend, roomService);
   attachShareDbWebSocket({ server, backend });
 
   server.listen(config.port, config.host, () => {

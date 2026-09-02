@@ -1,14 +1,17 @@
 import { nanoid } from 'nanoid';
 import {
   DEFAULT_ROOM_LANGUAGE,
+  DEFAULT_ROOM_VISIBILITY,
   ROOM_ID_LENGTH,
+  type RoomVisibility,
   type SupportedLanguage,
 } from '@/constants/index.js';
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
+import { assertCanEditRoom, canReadRoom, isOwner } from '@/rooms/access.js';
 import type { RoomRepository } from '@/rooms/roomRepository.js';
 import type { CreateRoomInput, Room } from '@/rooms/types.js';
 import { projectDocumentForNewRoom } from '@/projects/templates/index.js';
-import { NotFoundError } from '@/utils/errors.js';
+import { ForbiddenError, NotFoundError } from '@/utils/errors.js';
 
 export class RoomService {
   constructor(
@@ -25,6 +28,7 @@ export class RoomService {
       id,
       name: input.name?.trim() || `Untitled room ${id}`,
       language,
+      visibility: input.visibility ?? DEFAULT_ROOM_VISIBILITY,
       ownerId: input.ownerId ?? null,
       createdAt: now,
       updatedAt: now,
@@ -43,5 +47,29 @@ export class RoomService {
     const room = await this.repository.findById(id);
     if (!room) throw new NotFoundError(`Room ${id} not found`);
     return room;
+  }
+
+  async getReadable(id: string, userId: string | null): Promise<Room> {
+    const room = await this.get(id);
+    if (!canReadRoom(room, userId)) {
+      throw new NotFoundError(`Room ${id} not found`);
+    }
+    return room;
+  }
+
+  async getEditable(id: string, userId: string | null): Promise<Room> {
+    const room = await this.get(id);
+    assertCanEditRoom(room, userId);
+    return room;
+  }
+
+  async updateVisibility(id: string, userId: string, visibility: RoomVisibility): Promise<Room> {
+    const room = await this.get(id);
+    if (!isOwner(room, userId)) {
+      throw new ForbiddenError('Only the room owner can change visibility');
+    }
+    const updated = await this.repository.update(id, { visibility });
+    if (!updated) throw new NotFoundError(`Room ${id} not found`);
+    return updated;
   }
 }

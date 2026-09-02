@@ -17,14 +17,7 @@ export function App(): JSX.Element {
           </RequireAuth>
         }
       />
-      <Route
-        path="/rooms/:id"
-        element={
-          <RequireAuth>
-            <RoomPage />
-          </RequireAuth>
-        }
-      />
+      <Route path="/rooms/:id" element={<RoomPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

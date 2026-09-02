@@ -23,7 +23,7 @@ export class SnapshotService {
   ) {}
 
   async saveCurrent(roomId: string, userId: string): Promise<SnapshotDetail> {
-    const room = await this.roomService.get(roomId);
+    const room = await this.roomService.getEditable(roomId, userId);
     const doc = await this.documents.readDocument(roomId);
     const content = serializeProjectSnapshot(doc);
 
@@ -52,14 +52,14 @@ export class SnapshotService {
     return this.toDetail(row, room.language);
   }
 
-  async list(roomId: string): Promise<SnapshotSummary[]> {
-    const room = await this.roomService.get(roomId);
+  async list(roomId: string, userId: string | null): Promise<SnapshotSummary[]> {
+    const room = await this.roomService.getReadable(roomId, userId);
     const rows = await this.repository.list(roomId);
     return rows.map((row) => this.toSummary(row, room.language));
   }
 
-  async get(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
-    const room = await this.roomService.get(roomId);
+  async get(roomId: string, snapshotId: string, userId: string | null): Promise<SnapshotDetail> {
+    const room = await this.roomService.getReadable(roomId, userId);
     const row = await this.repository.findById(roomId, snapshotId);
     if (!row) {
       throw new NotFoundError(`Snapshot ${snapshotId} not found in room ${roomId}`);
@@ -67,8 +67,9 @@ export class SnapshotService {
     return this.toDetail(row, room.language);
   }
 
-  async restore(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
-    const detail = await this.get(roomId, snapshotId);
+  async restore(roomId: string, snapshotId: string, userId: string): Promise<SnapshotDetail> {
+    await this.roomService.getEditable(roomId, userId);
+    const detail = await this.get(roomId, snapshotId, userId);
     await this.documents.replaceProject(roomId, detail.project);
     logger.info({ roomId, snapshotId }, 'Restored snapshot to live project');
     return detail;

@@ -6,6 +6,7 @@ interface FileTreeProps {
   activeFile: string;
   entryPoint: string;
   disabled?: boolean;
+  readOnly?: boolean;
   onSelect: (path: string) => void;
   onNewFile: () => void;
   onRename: (path: string) => void;
@@ -17,6 +18,7 @@ export function FileTree({
   activeFile,
   entryPoint,
   disabled = false,
+  readOnly = false,
   onSelect,
   onNewFile,
   onRename,
@@ -51,10 +53,11 @@ export function FileTree({
         }}
       >
         <span>Files</span>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onNewFile}
+        {!readOnly && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onNewFile}
           title="New file"
           style={{
             background: 'transparent',
@@ -70,6 +73,7 @@ export function FileTree({
         >
           +
         </button>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
@@ -113,6 +117,8 @@ export function FileTree({
                 {fileName}
                 {path === entryPoint ? ' ▶' : ''}
               </button>
+              {!readOnly && (
+                <>
               <button
                 type="button"
                 disabled={disabled}
@@ -131,6 +137,8 @@ export function FileTree({
               >
                 ×
               </button>
+                </>
+              )}
             </div>
           );
         })}

@@ -40,6 +40,7 @@ interface BuildAppOptions {
   plagiarismService: PlagiarismService;
   snapshotService: SnapshotService;
   requireAuth: RequestHandler;
+  optionalAuth: RequestHandler;
 }
 
 export function buildApp({
@@ -51,6 +52,7 @@ export function buildApp({
   plagiarismService,
   snapshotService,
   requireAuth,
+  optionalAuth,
 }: BuildAppOptions): Express {
   const app = express();
 
@@ -84,7 +86,7 @@ export function buildApp({
 
   app.use('/auth', buildAuthRouter(authService));
   app.use('/api/user', buildUserRouter(requireAuth));
-  app.use('/api/rooms', buildRoomRouter({ roomService, documentService, requireAuth }));
+  app.use('/api/rooms', buildRoomRouter({ roomService, documentService, requireAuth, optionalAuth }));
   app.use(
     '/api/rooms/:roomId/snapshots',
     buildSnapshotRouter({

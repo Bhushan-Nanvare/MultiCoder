@@ -9,6 +9,11 @@ export const DEFAULT_ROOM_LANGUAGE = 'javascript';
 export const SUPPORTED_LANGUAGES = ['javascript', 'python', 'cpp'] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
+/** Default preserves today's invite-link editing behavior. */
+export const ROOM_VISIBILITIES = ['private', 'link-edit', 'link-view'] as const;
+export type RoomVisibility = (typeof ROOM_VISIBILITIES)[number];
+export const DEFAULT_ROOM_VISIBILITY: RoomVisibility = 'link-edit';
+
 export const HTTP_BODY_LIMIT = '256kb';
 
 export const WS_HEARTBEAT_INTERVAL_MS = 30_000;

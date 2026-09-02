@@ -1,5 +1,10 @@
-import type { PrismaClient, Room as PrismaRoom } from '@prisma/client';
-import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/constants/index.js';
+import type { PrismaClient, Room as PrismaRoom, RoomVisibility as PrismaVisibility } from '@prisma/client';
+import {
+  DEFAULT_ROOM_VISIBILITY,
+  SUPPORTED_LANGUAGES,
+  type RoomVisibility,
+  type SupportedLanguage,
+} from '@/constants/index.js';
 import type { RoomRepository } from '@/rooms/roomRepository.js';
 import type { Room } from '@/rooms/types.js';
 
@@ -9,11 +14,24 @@ function toLanguage(value: string): SupportedLanguage {
     : 'javascript';
 }
 
+const TO_API: Record<PrismaVisibility, RoomVisibility> = {
+  private: 'private',
+  link_edit: 'link-edit',
+  link_view: 'link-view',
+};
+
+const TO_PRISMA: Record<RoomVisibility, PrismaVisibility> = {
+  private: 'private',
+  'link-edit': 'link_edit',
+  'link-view': 'link_view',
+};
+
 function fromPrisma(row: PrismaRoom): Room {
   return {
     id: row.id,
     name: row.name,
     language: toLanguage(row.language),
+    visibility: TO_API[row.visibility] ?? DEFAULT_ROOM_VISIBILITY,
     ownerId: row.ownerId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -29,6 +47,7 @@ export class PrismaRoomRepository implements RoomRepository {
         id: room.id,
         name: room.name,
         language: room.language,
+        visibility: TO_PRISMA[room.visibility],
         ownerId: room.ownerId,
       },
     });
@@ -50,12 +69,16 @@ export class PrismaRoomRepository implements RoomRepository {
 
   async update(
     id: string,
-    patch: Partial<Pick<Room, 'name' | 'language'>>,
+    patch: Partial<Pick<Room, 'name' | 'language' | 'visibility'>>,
   ): Promise<Room | null> {
     try {
       const updated = await this.prisma.room.update({
         where: { id },
-        data: patch,
+        data: {
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.language !== undefined ? { language: patch.language } : {}),
+          ...(patch.visibility !== undefined ? { visibility: TO_PRISMA[patch.visibility] } : {}),
+        },
       });
       return fromPrisma(updated);
     } catch {

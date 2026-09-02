@@ -11,6 +11,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RoomVisibility {
+  private
+  link_edit
+  link_view
+}
+
 model User {
   id          String   @id @default(cuid())
   githubId    String?  @unique
@@ -29,12 +35,13 @@ model User {
 }
 
 model Room {
-  id        String   @id
-  name      String
-  language  String
-  ownerId   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String         @id
+  name       String
+  language   String
+  visibility RoomVisibility @default(link_edit)
+  ownerId    String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   snapshots Snapshot[]
