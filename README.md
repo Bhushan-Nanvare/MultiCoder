@@ -4,12 +4,16 @@ A real-time collaborative code editor with sandboxed execution, AI-powered code 
 
 ## What it does
 
-- **Live multi-cursor editing** — open the same room URL in two tabs and watch edits sync via Operational Transformation (ShareDB JSON0 + Monaco)
+- **Multi-file projects** — each room is a full project with a file tree, entry point selector, add/rename/delete files, and drag-and-drop reordering (ShareDB JSON0 OT)
+- **Live multi-cursor editing** — open the same room URL in two tabs and watch edits sync in real-time via Operational Transformation (Monaco ↔ ShareDB)
+- **Project templates** — create rooms from starter templates (JavaScript, Python, C++, Node two-file) or start blank
+- **Owner & editor roles** — room owner controls visibility (`private` / `link-edit` / `link-view`) and invites editors by GitHub username
+- **Code execution** — Run the entire project or a single file via self-hosted [Piston](https://github.com/engineer-man/piston); output broadcasts to all connected peers in real-time
 - **GitHub OAuth login** — JWT in HTTP-only cookie, verified on both REST calls and WebSocket upgrades
 - **AI code review** — Gemini Flash returns structured JSON (time complexity, suggestions, bugs with line+severity, security concerns, 1-100 score), streamed token-by-token via Server-Sent Events
 - **Plagiarism detection** — Rabin-Karp k-grams + winnowing fingerprints, Jaccard similarity against everyone's submitted snippets
-- **Room history** — manual snapshot save + restore, with retention pruning
-- **Code execution** *(Phase 2C — code-complete, runtime blocked: see [§Code execution](#code-execution))*
+- **Room history** — manual snapshot save + restore with retention pruning
+- **ShareDB persistence** — OT documents persist to Postgres via `sharedb-postgres`; server restarts don't wipe projects
 
 ## Tech stack
 
@@ -31,7 +35,7 @@ A real-time collaborative code editor with sandboxed execution, AI-powered code 
 ```
 MultiCoder/
 ├── backend/                Node + Express API + ShareDB realtime
-│   ├── prisma/             schema.prisma + migrations
+│   ├── prisma/             schema.prisma + migrations (incl. ShareDB tables)
 │   ├── src/
 │   │   ├── ai/             AiReviewProvider interface + Gemini adapter
 │   │   ├── auth/           jwt, github OAuth, cookies, user repo+service
@@ -41,11 +45,12 @@ MultiCoder/
 │   │   ├── execution/      Piston client + ExecutionService
 │   │   ├── http/           Express app, routes, middleware
 │   │   ├── plagiarism/     normalizer, winnowing, repo, service
-│   │   ├── realtime/       ShareDB backend, ws server, document service
-│   │   ├── rooms/          room repo + service
+│   │   ├── projects/       project templates (js, py, cpp, node-two-file)
+│   │   ├── realtime/       ShareDB backend + Postgres adapter, ws server, document service
+│   │   ├── rooms/          room repo + service (owner/editor roles)
 │   │   ├── snapshots/      snapshot repo + service
 │   │   ├── utils/          logger, errors
-│   │   ├── types/          ambient .d.ts (express, modules)
+│   │   ├── types/          ambient .d.ts (express, sharedb-postgres, modules)
 │   │   └── index.ts        composition root
 │   ├── Dockerfile          multi-stage build for production
 │   └── .env.example        every env var with descriptions
@@ -55,18 +60,21 @@ MultiCoder/
 │   │   ├── auth/           AuthProvider + RequireAuth
 │   │   ├── components/
 │   │   │   ├── editor/     CollaborativeEditor, EditorToolbar, OutputPanel
+│   │   │   ├── fileTree/   FileTreePanel (add/rename/delete/reorder)
+│   │   │   ├── editors/    EditorsPanel (invite/remove editors)
 │   │   │   ├── history/    HistoryPanel
 │   │   │   ├── plagiarism/ PlagiarismPanel
 │   │   │   └── review/     ReviewPanel
 │   │   ├── pages/          LoginPage, DashboardPage, RoomPage
-│   │   ├── realtime/       sharedb connection + Monaco↔json0 binding
-│   │   └── types/          shared TS types
+│   │   ├── realtime/       sharedb connection, Monaco↔json0 binding, projectOps
+│   │   └── types/          shared TS types (room, execution, project)
 │   ├── vercel.json         Vite preset + SPA rewrite
 │   └── .env.example
 ├── docs/
-│   ├── prd.txt             Original Product Requirements Document
-│   └── engineering-rules.txt   Engineering rules this codebase follows
-├── docker-compose.yml      Local Postgres + Redis (optional alt to Neon)
+│   ├── prd.txt                    Original Product Requirements Document
+│   ├── engineering-rules.txt      Engineering rules this codebase follows
+│   └── plan-b-implementation.md   Multi-file project implementation roadmap
+├── docker-compose.yml      Local Postgres + Piston
 └── render.yaml             One-click backend deploy blueprint
 ```
 
@@ -144,6 +152,7 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `GEMINI_API_KEY` | **yes** | — | From aistudio.google.com/app/apikey |
 | `GEMINI_MODEL` | no | `gemini-flash-latest` | Pin a specific version if you prefer |
 | `PISTON_BASE_URL` | no | `http://localhost:2000/api/v2` | Piston v2 API base URL (self-hosted via `docker compose up -d piston`) |
+| `SHAREDB_STORAGE` | no | `memory` (dev) / `postgres` (prod) | Set to `postgres` to persist OT documents to Postgres in dev; auto in production |
 
 ### Frontend (`frontend/.env`)
 
@@ -185,13 +194,17 @@ All error responses share `{ error: { code, message, details? } }`.
 
 ## Code execution
 
-The execution module targets [Piston](https://github.com/engineer-man/piston) for sandboxed multi-language execution. **Self-host Piston locally** (recommended):
+The execution module uses [Piston](https://github.com/engineer-man/piston) for sandboxed multi-language execution. **Self-host Piston locally** (recommended):
 
 ```bash
 docker compose up -d piston
 ```
 
-Set `PISTON_BASE_URL=http://localhost:2000/api/v2` in `backend/.env` (this is the default). The Run button sends code to Piston and displays stdout/stderr. The client already uses a multi-file-ready `files[]` payload shape; Stage 4 will send the full project.
+Set `PISTON_BASE_URL=http://localhost:2000/api/v2` in `backend/.env` (this is the default). The Run button sends the full project's files to Piston and displays stdout/stderr/compile output. Run results are automatically **broadcast to all connected peers** via ShareDB — everyone in the room sees the output in real-time with a "Run by @username" attribution.
+
+You can run in two scopes:
+- **Project mode** (default) — sends all files with the configured entry point
+- **File mode** — sends only the active file
 
 The public emkc.org Piston API is whitelist-only — do not rely on it for local dev.
 
@@ -241,6 +254,10 @@ The image is multi-stage (~150 MB), runs as `node` (non-root), and includes a `H
 ## Engineering notes worth calling out
 
 - **Layered architecture** — routes → services → repositories. No business logic in handlers; nothing in services imports Express.
+- **Multi-file OT** — each project is a single ShareDB JSON0 document (`{ version, entryPoint, files: { [path]: { content, language? } }, meta? }`). File tree mutations (add/rename/delete) are atomic JSON0 ops that compose cleanly with text edits.
+- **ShareDB persistence** — production uses `sharedb-postgres` backed by the same Postgres (Neon) database. In-memory adapter for fast local dev; set `SHAREDB_STORAGE=postgres` to test persistence locally.
+- **Owner/editor RBAC** — room owner can set visibility and invite editors. The `RoomMember` table + `RoomService` enforce access on both REST and WebSocket layers.
+- **Run output broadcast** — execution results are written to `meta.lastRun` in the ShareDB document via JSON0 ops, so all connected clients see the output immediately.
 - **Provider abstraction for AI** — `AiReviewProvider` interface in `src/ai/types.ts` is the seam. Adding Ollama/Groq/OpenAI = one new class + one factory case (`src/ai/providerFactory.ts` uses an exhaustive `never`-typed switch).
 - **Structured LLM output** — Gemini's `responseSchema` constrains the JSON shape, then zod validates at runtime. No prompt-parsing fragility.
 - **Plagiarism algorithm** — winnowing per Schleimer/Wilkerson/Aiken (SIGMOD 2003): Rabin-Karp k-grams (k=5), sliding-window min (w=4), right-most tie-break. Live test catches near-duplicates that renamed every variable at 50% Jaccard similarity.
@@ -251,3 +268,4 @@ The image is multi-stage (~150 MB), runs as `node` (non-root), and includes a `H
 
 - [`docs/prd.txt`](docs/prd.txt) — Original Product Requirements Document.
 - [`docs/engineering-rules.txt`](docs/engineering-rules.txt) — Production-grade engineering rules this codebase follows.
+- [`docs/plan-b-implementation.md`](docs/plan-b-implementation.md) — Multi-file project implementation roadmap (all stages complete).
