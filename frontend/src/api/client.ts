@@ -9,7 +9,7 @@ import type {
   ReviewStreamCallbacks,
   ReviewStreamEvent,
 } from '@/types/review';
-import type { ProjectTemplateId, ProjectTemplateSummary, Room, RoomVisibility, SupportedLanguage } from '@/types/room';
+import type { ProjectTemplateId, ProjectTemplateSummary, Room, RoomMember, RoomVisibility, SupportedLanguage } from '@/types/room';
 import type { SnapshotDetail, SnapshotSummary } from '@/types/snapshot';
 
 interface ApiErrorBody {
@@ -101,6 +101,32 @@ export const api = {
     return json.data;
   },
 
+  async deleteRoom(id: string): Promise<void> {
+    await request<void>(`/api/rooms/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  async listRoomMembers(roomId: string): Promise<RoomMember[]> {
+    const json = await request<{ data: RoomMember[] }>(
+      `/api/rooms/${encodeURIComponent(roomId)}/members`,
+    );
+    return json.data;
+  },
+
+  async addRoomMember(roomId: string, username: string): Promise<RoomMember> {
+    const json = await request<{ data: RoomMember }>(
+      `/api/rooms/${encodeURIComponent(roomId)}/members`,
+      { method: 'POST', body: JSON.stringify({ username }) },
+    );
+    return json.data;
+  },
+
+  async removeRoomMember(roomId: string, userId: string): Promise<void> {
+    await request<void>(
+      `/api/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(userId)}`,
+      { method: 'DELETE' },
+    );
+  },
+
   async me(): Promise<AuthUser> {
     const json = await request<{ data: AuthUser }>('/api/user/me');
     return json.data;
@@ -166,6 +192,13 @@ export const api = {
       { method: 'POST' },
     );
     return json.data;
+  },
+
+  async deleteSnapshot(roomId: string, snapshotId: string): Promise<void> {
+    await request<void>(
+      `/api/rooms/${encodeURIComponent(roomId)}/snapshots/${encodeURIComponent(snapshotId)}`,
+      { method: 'DELETE' },
+    );
   },
 
   async checkPlagiarism(input: PlagiarismRequest): Promise<PlagiarismResult> {

@@ -18,6 +18,7 @@ export function DashboardPage(): JSX.Element {
   const [templates, setTemplates] = useState<ProjectTemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [language, setLanguage] = useState<SupportedLanguage>('javascript');
@@ -81,6 +82,24 @@ export function DashboardPage(): JSX.Element {
       setError(err instanceof Error ? err.message : 'Failed to create room');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteRoom = async (room: Room): Promise<void> => {
+    if (!room.canDelete) return;
+    const confirmed = window.confirm(
+      `Delete "${room.name}"? Snapshots and the live project are removed.`,
+    );
+    if (!confirmed) return;
+    setDeletingId(room.id);
+    setError(null);
+    try {
+      await api.deleteRoom(room.id);
+      setRooms((list) => list.filter((item) => item.id !== room.id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -198,7 +217,7 @@ export function DashboardPage(): JSX.Element {
             >
               <option value="link-edit">Anyone with the link can edit</option>
               <option value="link-view">Anyone with the link can view (read-only)</option>
-              <option value="private">Private — only you</option>
+              <option value="private">Private — only you and invited editors</option>
             </select>
           </label>
           <button type="submit" disabled={creating} style={buttonStyle}>
@@ -231,13 +250,35 @@ export function DashboardPage(): JSX.Element {
               <div>
                 <div style={{ fontWeight: 600 }}>{room.name}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {room.language} · {room.visibility} · created{' '}
+                  {room.language} · {room.visibility}
+                  {room.isEditor && !room.isOwner ? ' · editor' : ''}
+                  {' · created '}
                   {new Date(room.createdAt).toLocaleString()}
                 </div>
               </div>
-              <Link to={`/rooms/${room.id}`} style={{ color: '#60a5fa' }}>
-                Open →
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {room.canDelete && (
+                  <button
+                    type="button"
+                    disabled={deletingId === room.id}
+                    onClick={() => void handleDeleteRoom(room)}
+                    style={{
+                      background: 'transparent',
+                      color: '#f87171',
+                      border: '1px solid #7f1d1d',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      fontSize: 12,
+                      cursor: deletingId === room.id ? 'wait' : 'pointer',
+                    }}
+                  >
+                    {deletingId === room.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+                <Link to={`/rooms/${room.id}`} style={{ color: '#60a5fa' }}>
+                  Open →
+                </Link>
+              </div>
             </li>
           ))}
         </ul>

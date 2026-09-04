@@ -163,13 +163,18 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `GET` | `/api/user/me` | ✅ | Current user |
 | `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`, `visibility`) |
 | `GET` | `/api/rooms/templates` | ✅ | Starter project templates |
-| `GET` | `/api/rooms` | ✅ | List caller's rooms |
+| `GET` | `/api/rooms` | ✅ | List rooms you own or were invited to |
 | `PATCH` | `/api/rooms/:id` | ✅ | Owner updates `visibility` |
-| `GET` | `/api/rooms/:id` | cookie optional | Get room; `private` is owner-only; `link-view` allows anonymous read |
+| `DELETE` | `/api/rooms/:id` | ✅ | Owner deletes room |
+| `GET` | `/api/rooms/:id` | cookie optional | Get room; `private` is owner/editors only; `link-view` allows anonymous read |
+| `GET` | `/api/rooms/:id/members` | ✅ | List invited editors |
+| `POST` | `/api/rooms/:id/members` | ✅ | Owner invites editor by GitHub username |
+| `DELETE` | `/api/rooms/:id/members/:userId` | ✅ | Owner removes editor |
 | `POST` | `/api/rooms/:id/snapshots` | ✅ | Snapshot current ShareDB doc |
 | `GET` | `/api/rooms/:id/snapshots` | ✅ | List snapshots |
 | `GET` | `/api/rooms/:id/snapshots/:snapshotId` | ✅ | Get snapshot detail (content) |
 | `POST` | `/api/rooms/:id/snapshots/:snapshotId/restore` | ✅ | Restore snapshot to live project (broadcast) |
+| `DELETE` | `/api/rooms/:id/snapshots/:snapshotId` | ✅ | Owner deletes a snapshot |
 | `POST` | `/api/execute` | ✅ + 10/min | Run code (Piston) |
 | `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review |
 | `POST` | `/api/review/stream` | ✅ + 5/min | SSE: `event: chunk|result|error` |

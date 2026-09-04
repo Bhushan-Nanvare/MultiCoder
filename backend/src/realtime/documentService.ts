@@ -152,4 +152,22 @@ export class RealtimeDocumentService {
       connection.close();
     }
   }
+
+  async destroyDocument(roomId: string): Promise<void> {
+    const connection = this.backend.connect();
+    const doc = connection.get(SHAREDB_COLLECTION, roomId);
+    try {
+      await fetchDoc(doc);
+      if (!doc.type) return;
+      await new Promise<void>((resolve, reject) => {
+        doc.del({}, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      logger.info({ roomId }, 'Deleted ShareDB room document');
+    } finally {
+      connection.close();
+    }
+  }
 }

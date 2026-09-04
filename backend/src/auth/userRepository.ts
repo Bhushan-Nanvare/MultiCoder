@@ -18,6 +18,7 @@ function toAuthUser(row: PrismaUser): AuthUser {
 export interface UserRepository {
   findById(id: string): Promise<AuthUser | null>;
   findByGithubId(githubId: string): Promise<AuthUser | null>;
+  findByUsername(username: string): Promise<AuthUser | null>;
   upsertFromGithub(profile: GithubProfile): Promise<AuthUser>;
 }
 
@@ -31,6 +32,13 @@ export class PrismaUserRepository implements UserRepository {
 
   async findByGithubId(githubId: string): Promise<AuthUser | null> {
     const row = await this.prisma.user.findUnique({ where: { githubId } });
+    return row ? toAuthUser(row) : null;
+  }
+
+  async findByUsername(username: string): Promise<AuthUser | null> {
+    const row = await this.prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
+    });
     return row ? toAuthUser(row) : null;
   }
 

@@ -65,5 +65,16 @@ export function buildSnapshotRouter({
     }
   });
 
+  router.delete('/:snapshotId', requireAuth, rateLimit, async (req, res, next) => {
+    try {
+      const { roomId, snapshotId } = snapshotIdParam.parse(req.params);
+      if (!req.user) throw new AppError('Missing user', 500, 'INTERNAL_ERROR');
+      await snapshotService.remove(roomId, snapshotId, req.user.id);
+      res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

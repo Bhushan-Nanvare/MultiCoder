@@ -11,8 +11,10 @@ interface HistoryPanelProps {
   onSave: () => void;
   onRefresh: () => void;
   onRestore: (snapshotId: string) => void;
+  onDelete?: (snapshotId: string) => void;
   onDismiss: () => void;
   readOnly?: boolean;
+  canDeleteSnapshots?: boolean;
 }
 
 export function HistoryPanel({
@@ -25,8 +27,10 @@ export function HistoryPanel({
   onSave,
   onRefresh,
   onRestore,
+  onDelete,
   onDismiss,
   readOnly = false,
+  canDeleteSnapshots = false,
 }: HistoryPanelProps): JSX.Element | null {
   if (!open) return null;
 
@@ -141,6 +145,7 @@ export function HistoryPanel({
                       </code>
                     </div>
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={() => onRestore(snap.id)}
@@ -153,6 +158,22 @@ export function HistoryPanel({
                   >
                     {restoring ? 'Restoring…' : 'Restore'}
                   </button>
+                  {canDeleteSnapshots && onDelete && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(snap.id)}
+                      disabled={restoring}
+                      style={{
+                        ...secondaryButtonStyle,
+                        whiteSpace: 'nowrap',
+                        color: '#f87171',
+                        borderColor: '#7f1d1d',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  </div>
                 </div>
               </li>
             );

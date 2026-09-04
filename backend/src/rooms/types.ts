@@ -22,3 +22,11 @@ export interface CreateRoomInput {
 export interface UpdateRoomInput {
   visibility: RoomVisibility;
 }
+
+export interface RoomMemberView {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}

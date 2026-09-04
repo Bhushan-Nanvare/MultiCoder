@@ -13,6 +13,7 @@ import {
 import type { SnapshotRepository } from '@/snapshots/snapshotRepository.js';
 import type { SnapshotDetail, SnapshotRow, SnapshotSummary } from '@/snapshots/types.js';
 import { AppError, NotFoundError } from '@/utils/errors.js';
+import { isOwner } from '@/rooms/access.js';
 import { logger } from '@/utils/logger.js';
 
 export class SnapshotService {
@@ -73,6 +74,18 @@ export class SnapshotService {
     await this.documents.replaceProject(roomId, detail.project);
     logger.info({ roomId, snapshotId }, 'Restored snapshot to live project');
     return detail;
+  }
+
+  async remove(roomId: string, snapshotId: string, userId: string): Promise<void> {
+    const room = await this.roomService.getReadable(roomId, userId);
+    if (!isOwner(room, userId)) {
+      throw new AppError('Only the room owner can delete snapshots', 403, 'FORBIDDEN');
+    }
+    const deleted = await this.repository.delete(roomId, snapshotId);
+    if (!deleted) {
+      throw new NotFoundError(`Snapshot ${snapshotId} not found in room ${roomId}`);
+    }
+    logger.info({ roomId, snapshotId }, 'Deleted snapshot');
   }
 
   private toSummary(row: SnapshotRow, language: SupportedLanguage): SnapshotSummary {

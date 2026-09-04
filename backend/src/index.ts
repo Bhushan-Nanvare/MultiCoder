@@ -15,6 +15,7 @@ import { RealtimeDocumentService } from '@/realtime/documentService.js';
 import { installRoomAccessMiddleware } from '@/realtime/shareDbAccess.js';
 import { createShareDbBackend } from '@/realtime/shareDbBackend.js';
 import { attachShareDbWebSocket } from '@/realtime/wsServer.js';
+import { PrismaRoomMemberRepository } from '@/rooms/roomMemberRepository.js';
 import { PrismaRoomRepository } from '@/rooms/prismaRoomRepository.js';
 import { RoomService } from '@/rooms/roomService.js';
 import { PrismaSnapshotRepository } from '@/snapshots/snapshotRepository.js';
@@ -29,8 +30,9 @@ async function main(): Promise<void> {
   const backend = createShareDbBackend();
   const documentService = new RealtimeDocumentService(backend);
   const roomRepository = new PrismaRoomRepository(prisma);
-  const roomService = new RoomService(roomRepository, documentService);
+  const memberRepository = new PrismaRoomMemberRepository(prisma);
   const userRepository = new PrismaUserRepository(prisma);
+  const roomService = new RoomService(roomRepository, documentService, memberRepository, userRepository);
   const authService = new AuthService(userRepository);
   const requireAuth = buildRequireAuth(authService);
   const optionalAuth = buildOptionalAuth(authService);

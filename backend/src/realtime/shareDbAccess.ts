@@ -1,6 +1,5 @@
 import type ShareDB from 'sharedb';
 import { SHAREDB_COLLECTION } from '@/constants/index.js';
-import { canEditRoom, canReadRoom } from '@/rooms/access.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import { logger } from '@/utils/logger.js';
 
@@ -40,9 +39,9 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
     }
     const userId = agent.custom?.userId ?? null;
     roomService
-      .get(id)
-      .then((room) => {
-        if (!canReadRoom(room, userId)) {
+      .userCanRead(id, userId)
+      .then((ok) => {
+        if (!ok) {
           deny(callback, 'You do not have access to this room');
           return;
         }
@@ -104,9 +103,9 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
     }
     const userId = (context.agent.custom as ShareDbClientContext | undefined)?.userId ?? null;
     roomService
-      .get(context.id)
-      .then((room) => {
-        if (!canEditRoom(room, userId)) {
+      .userCanEdit(context.id, userId)
+      .then((ok) => {
+        if (!ok) {
           deny(next, 'This room is read-only');
           return;
         }

@@ -11,6 +11,7 @@ export interface SnapshotRepository {
   findById(roomId: string, snapshotId: string): Promise<SnapshotRow | null>;
   countForRoom(roomId: string): Promise<number>;
   deleteOldest(roomId: string, keep: number): Promise<number>;
+  delete(roomId: string, snapshotId: string): Promise<boolean>;
 }
 
 export class PrismaSnapshotRepository implements SnapshotRepository {
@@ -93,5 +94,12 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
       where: { id: { in: stale.map((r) => r.id) } },
     });
     return result.count;
+  }
+
+  async delete(roomId: string, snapshotId: string): Promise<boolean> {
+    const result = await this.prisma.snapshot.deleteMany({
+      where: { id: snapshotId, roomId },
+    });
+    return result.count > 0;
   }
 }

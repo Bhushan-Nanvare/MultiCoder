@@ -59,9 +59,16 @@ export class PrismaRoomRepository implements RoomRepository {
     return row ? fromPrisma(row) : null;
   }
 
-  async list(filter: { ownerId?: string } = {}): Promise<Room[]> {
+  async list(filter: { userId?: string; ownerId?: string } = {}): Promise<Room[]> {
+    const where = filter.userId
+      ? {
+          OR: [{ ownerId: filter.userId }, { members: { some: { userId: filter.userId } } }],
+        }
+      : filter.ownerId
+        ? { ownerId: filter.ownerId }
+        : undefined;
     const rows = await this.prisma.room.findMany({
-      where: filter.ownerId ? { ownerId: filter.ownerId } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
     });
     return rows.map(fromPrisma);
@@ -83,6 +90,15 @@ export class PrismaRoomRepository implements RoomRepository {
       return fromPrisma(updated);
     } catch {
       return null;
+    }
+  }
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      await this.prisma.room.delete({ where: { id } });
+      return true;
+    } catch {
+      return false;
     }
   }
 }

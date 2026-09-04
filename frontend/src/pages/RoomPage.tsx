@@ -11,6 +11,7 @@ import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
 import { FilePathModal } from '@/components/project/FilePathModal';
 import { FileTree } from '@/components/project/FileTree';
+import { EditorsPanel } from '@/components/project/EditorsPanel';
 import { PresenceBar } from '@/components/project/PresenceBar';
 import { TabBar } from '@/components/project/TabBar';
 import { ReviewPanel } from '@/components/review/ReviewPanel';
@@ -18,7 +19,7 @@ import { useAuth } from '@/auth/AuthContext';
 import type { ExecutionResult, RunScope } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
-import type { Room, RoomVisibility } from '@/types/room';
+import type { Room, RoomMember, RoomVisibility } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
 import { useRoomPresence } from '@/realtime/useRoomPresence';
@@ -56,6 +57,12 @@ export function RoomPage(): JSX.Element {
   const [runScope, setRunScope] = useState<RunScope>('project');
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
+  const [editorsOpen, setEditorsOpen] = useState(false);
+  const [members, setMembers] = useState<RoomMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [deletingSnapshotId, setDeletingSnapshotId] = useState<string | null>(null);
 
   const canEdit = Boolean(room?.canEdit);
   const project = useProjectDocument(room?.id ?? '');
@@ -332,6 +339,7 @@ export function RoomPage(): JSX.Element {
       if (next) void refreshSnapshots();
       return next;
     });
+    setEditorsOpen(false);
   }, [refreshSnapshots]);
 
   const handleSaveSnapshot = useCallback(async (): Promise<void> => {
@@ -375,6 +383,79 @@ export function RoomPage(): JSX.Element {
       }
     },
     [room],
+  );
+
+  const refreshMembers = useCallback(async (): Promise<void> => {
+    if (!room) return;
+    setMembersLoading(true);
+    setMembersError(null);
+    try {
+      const list = await api.listRoomMembers(room.id);
+      setMembers(list);
+    } catch (err: unknown) {
+      setMembersError(err instanceof Error ? err.message : 'Failed to load editors');
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [room]);
+
+  const handleToggleEditors = useCallback(() => {
+    setEditorsOpen((prev) => {
+      const next = !prev;
+      if (next) void refreshMembers();
+      return next;
+    });
+    setHistoryOpen(false);
+  }, [refreshMembers]);
+
+  const handleInviteEditor = useCallback(
+    async (username: string): Promise<void> => {
+      if (!room) return;
+      setInviting(true);
+      setMembersError(null);
+      try {
+        await api.addRoomMember(room.id, username);
+        await refreshMembers();
+      } catch (err: unknown) {
+        setMembersError(err instanceof Error ? err.message : 'Failed to invite editor');
+      } finally {
+        setInviting(false);
+      }
+    },
+    [room, refreshMembers],
+  );
+
+  const handleRemoveEditor = useCallback(
+    async (userId: string): Promise<void> => {
+      if (!room) return;
+      setMembersError(null);
+      try {
+        await api.removeRoomMember(room.id, userId);
+        await refreshMembers();
+      } catch (err: unknown) {
+        setMembersError(err instanceof Error ? err.message : 'Failed to remove editor');
+      }
+    },
+    [room, refreshMembers],
+  );
+
+  const handleDeleteSnapshot = useCallback(
+    async (snapshotId: string): Promise<void> => {
+      if (!room || !room.isOwner) return;
+      const confirmed = window.confirm('Delete this snapshot? This cannot be undone.');
+      if (!confirmed) return;
+      setDeletingSnapshotId(snapshotId);
+      setSnapshotsError(null);
+      try {
+        await api.deleteSnapshot(room.id, snapshotId);
+        await refreshSnapshots();
+      } catch (err: unknown) {
+        setSnapshotsError(err instanceof Error ? err.message : 'Failed to delete snapshot');
+      } finally {
+        setDeletingSnapshotId(null);
+      }
+    },
+    [room, refreshSnapshots],
   );
 
   useEffect(() => () => reviewAbortRef.current?.abort(), []);
@@ -470,6 +551,22 @@ export function RoomPage(): JSX.Element {
               <option value="link-view">Link can view</option>
               <option value="private">Private</option>
             </select>
+          )}
+          {room.isOwner && (
+            <button
+              type="button"
+              onClick={handleToggleEditors}
+              style={{
+                background: editorsOpen ? '#334155' : '#1e293b',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: 6,
+                padding: '6px 12px',
+                cursor: 'pointer',
+              }}
+            >
+              Editors
+            </button>
           )}
           {user && <PresenceBar local={user} peers={presence.peers} />}
           {!user && (
@@ -640,8 +737,21 @@ export function RoomPage(): JSX.Element {
         onSave={handleSaveSnapshot}
         onRefresh={refreshSnapshots}
         onRestore={handleRestoreSnapshot}
+        onDelete={handleDeleteSnapshot}
         onDismiss={() => setHistoryOpen(false)}
         readOnly={!canEdit}
+        canDeleteSnapshots={Boolean(room.isOwner)}
+      />
+      <EditorsPanel
+        open={editorsOpen}
+        members={members}
+        loading={membersLoading}
+        errorMessage={membersError}
+        inviting={inviting}
+        canManage={Boolean(room.isOwner)}
+        onInvite={handleInviteEditor}
+        onRemove={handleRemoveEditor}
+        onDismiss={() => setEditorsOpen(false)}
       />
     </div>
   );

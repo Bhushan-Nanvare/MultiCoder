@@ -33,6 +33,8 @@ export interface Room {
   updatedAt: string;
   canEdit: boolean;
   isOwner: boolean;
+  isEditor?: boolean;
+  canDelete?: boolean;
 }
 
 export const ROOM_VISIBILITIES = ['private', 'link-edit', 'link-view'] as const;
@@ -71,6 +73,13 @@ export interface ProjectTemplateSummary {
   language: SupportedLanguage;
   entryPoint: string;
   fileCount: number;
+}
+export interface RoomMember {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
 }
 export const MAX_FILES_PER_ROOM = 50;
 export const MAX_FILE_BYTES = 64 * 1024;

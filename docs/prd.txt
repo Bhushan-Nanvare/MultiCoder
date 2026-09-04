@@ -1,0 +1,128 @@
+MultiCoder — plan / notes
+=========================
+
+Idea: a real-time collaborative code editor. Two people open the same
+URL, both can type, both see each other's edits as they happen. Like
+Google Docs but for code. Plus a Run button, an AI reviewer, and a
+plagiarism check.
+
+Reason I'm building this — half because I keep wanting it when I'm
+helping a friend debug stuff over screenshare and it's clunky to copy
+code back and forth. Half because I want a portfolio project that
+isn't another todo app.
+
+
+Goals
+-----
+
+- something I'd actually use, not a demo
+- end-to-end working: room url -> type -> sync -> run -> review
+- production-quality code even though it's a side project. if I
+  wouldn't ship it to prod I shouldn't commit it
+- learn ShareDB properly. learn how OT actually works in practice
+
+
+What I want it to do
+--------------------
+
+P0 (has to exist for v1):
+- open a room URL, edit in a Monaco editor
+- typing on one tab shows up on every other tab on that room, fast
+- pick a language for the room (js / python / cpp to start)
+- no signup wall to try it. land on the URL, start typing.
+
+P1 (needed before I'd actually share it):
+- sign in with GitHub. rooms have owners
+- "my rooms" dashboard
+- persist rooms in a real db, not in memory
+- copy-invite-link button
+
+P2 (the actually impressive stuff):
+- Run button. sandboxed execution, stdout/stderr/exitCode shown
+- AI code review. paste a chunk, get issues + suggestions + a score.
+  has to use structured output, not me parsing markdown
+- plagiarism check. fingerprint the code, compare against snippets
+  i've stored, return similarity %. winnowing + Jaccard. i did
+  this in a college assignment, want to redo it properly
+- snapshots / history. save current room state, restore later.
+  restore should broadcast to everyone in the room
+
+Nice-to-haves (probably skipped for v1):
+- presence indicators (who else is in the room right now)
+- cursor names / colors per user
+- export room to gist
+- syntax-aware diff in the review panel
+- shareable read-only room links
+
+
+Non-goals
+---------
+
+Not building a full IDE. one file per room. no file tree, no multi-
+file projects. if that's limiting, fine — scope first.
+
+Not optimizing for mobile. desktop browser only. if it works on tablet
+that's a bonus, not testing it.
+
+Not trying to replace VS Code Live Share. this is a self-hostable
+collaborative editor with batteries included.
+
+
+Stack (rough)
+-------------
+
+Backend: Node + Express + TypeScript. Postgres via Prisma. ShareDB
+on top of WebSockets for the realtime layer. zod everywhere for
+validation.
+
+Frontend: React + Vite + TypeScript. Monaco editor. ReconnectingWebSocket
+under ShareDB so transient drops don't bother the user.
+
+Execution: Piston public API for v1. free, has all the languages I
+care about. their public endpoint isn't a forever guarantee though,
+so the execution layer is wrapped behind an interface — i can swap
+to self-hosted Piston or Judge0 if it goes down.
+
+AI: Gemini Flash. has responseSchema support so structured output is
+guaranteed. provider is pluggable behind an interface (AiReviewProvider)
+in case I want to add Claude / GPT later.
+
+Deploy: Vercel for frontend, Render for backend, Neon for Postgres.
+free tier until something breaks.
+
+
+Things I'm not sure about yet
+-----------------------------
+
+- ShareDB vs Yjs vs writing a CRDT myself. going with ShareDB. OT
+  is fine for plain text and the library is mature. will revisit if
+  I hit a wall.
+
+- snapshot retention. 50 per room hardcoded for now, can make it
+  configurable later if anyone complains
+
+- where does the AI key live in deployment. probably Render env var,
+  marked sync:false in render.yaml so it never enters source control
+
+- rate limits. 10/min for execute, 5/min for AI review, 20/min for
+  plagiarism. these are guesses, will tune once I see real usage
+
+
+Done = ?
+--------
+
+I can open the live deploy in two tabs (one phone, one laptop), create
+a room, type in one tab, see it sync in the other, hit Run and get
+output, hit AI Review and get a structured response, save a snapshot,
+restore it, nothing crashes. if a friend can try it without me
+explaining anything first, double done.
+
+
+Random notes to self
+--------------------
+
+- write the README at the end, not the beginning. it'll be wrong if
+  I write it first
+- don't get bogged down in perfect commit messages. ship the code
+- pick one thing per session. don't context-switch between auth and
+  realtime in the same evening

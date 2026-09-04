@@ -27,9 +27,10 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  rooms     Room[]
-  snapshots Snapshot[]
-  snippets  Snippet[]
+  rooms           Room[]
+  snapshots       Snapshot[]
+  snippets        Snippet[]
+  roomMemberships RoomMember[]
 
   @@map("users")
 }
@@ -43,11 +44,25 @@ model Room {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner     User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   snapshots Snapshot[]
+  members   RoomMember[]
 
   @@index([ownerId])
   @@map("rooms")
+}
+
+model RoomMember {
+  roomId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+  @@map("room_members")
 }
 
 model Snapshot {
