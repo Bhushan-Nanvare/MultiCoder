@@ -234,12 +234,27 @@ export function RoomPage(): JSX.Element {
         files: payloadFiles,
       });
       setExecutionResult(result);
+
+      // Broadcast to all connected clients via ShareDB
+      if (canEdit && user) {
+        project.setLastRun({
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode ?? 0,
+          signal: result.signal,
+          compileStderr: result.compileStderr,
+          language: result.language,
+          triggeredBy: user.id,
+          triggeredByUsername: user.username,
+          at: new Date().toISOString(),
+        }).catch(() => { /* best-effort broadcast */ });
+      }
     } catch (err: unknown) {
       setExecutionError(err instanceof Error ? err.message : 'Execution failed');
     } finally {
       setRunning(false);
     }
-  }, [room, project.filesMap, project.entryPoint, activeFilePath, runScope]);
+  }, [room, project.filesMap, project.entryPoint, activeFilePath, runScope, canEdit, user, project.setLastRun]);
 
   const handleReview = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -713,6 +728,7 @@ export function RoomPage(): JSX.Element {
         result={executionResult}
         errorMessage={executionError}
         running={running}
+        sharedResult={project.lastRun}
       />
       <ReviewPanel
         result={reviewResult}
@@ -734,6 +750,7 @@ export function RoomPage(): JSX.Element {
         errorMessage={snapshotsError}
         savingNow={savingSnapshot}
         restoringId={restoringSnapshotId}
+        deletingId={deletingSnapshotId}
         onSave={handleSaveSnapshot}
         onRefresh={refreshSnapshots}
         onRestore={handleRestoreSnapshot}

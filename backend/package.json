@@ -20,6 +20,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^5.22.0",
+    "@teamwork/websocket-json-stream": "^2.0.0",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -28,10 +29,11 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.9",
+    "pg": "^8.23.0",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "sharedb": "^5.1.1",
-    "@teamwork/websocket-json-stream": "^2.0.0",
+    "sharedb-postgres": "^6.0.0",
     "ws": "^8.18.0",
     "zod": "^3.23.8"
   },

@@ -1,12 +1,17 @@
 import type { ExecutionResult } from '@/types/execution';
+import type { LastRunResult } from '@/types/room';
 
 interface OutputPanelProps {
   result: ExecutionResult | null;
   errorMessage: string | null;
   running: boolean;
+  sharedResult?: LastRunResult | null;
 }
 
-export function OutputPanel({ result, errorMessage, running }: OutputPanelProps): JSX.Element {
+export function OutputPanel({ result, errorMessage, running, sharedResult }: OutputPanelProps): JSX.Element {
+  /** Show shared result when we have no local result, or when the shared one is newer. */
+  const showShared = !running && !result && !errorMessage && sharedResult;
+
   return (
     <section
       style={{
@@ -46,6 +51,11 @@ export function OutputPanel({ result, errorMessage, running }: OutputPanelProps)
             </span>
           </>
         )}
+        {showShared && sharedResult.triggeredByUsername && (
+          <span style={{ color: '#60a5fa' }}>
+            Run by @{sharedResult.triggeredByUsername} · {new Date(sharedResult.at).toLocaleTimeString()}
+          </span>
+        )}
       </header>
 
       {running && <p style={{ opacity: 0.7 }}>Executing…</p>}
@@ -54,7 +64,7 @@ export function OutputPanel({ result, errorMessage, running }: OutputPanelProps)
         <pre style={{ color: '#f87171', whiteSpace: 'pre-wrap', margin: 0 }}>{errorMessage}</pre>
       )}
 
-      {!running && !errorMessage && !result && (
+      {!running && !errorMessage && !result && !showShared && (
         <p style={{ opacity: 0.5 }}>Press Run to execute the project (or the active file).</p>
       )}
 
@@ -66,6 +76,19 @@ export function OutputPanel({ result, errorMessage, running }: OutputPanelProps)
           {result.stdout && <Section title="stdout" color="#86efac" content={result.stdout} />}
           {result.stderr && <Section title="stderr" color="#f87171" content={result.stderr} />}
           {!result.stdout && !result.stderr && !result.compileStderr && (
+            <p style={{ opacity: 0.5 }}>(no output)</p>
+          )}
+        </>
+      )}
+
+      {showShared && (
+        <>
+          {sharedResult.compileStderr && (
+            <Section title="compile stderr" color="#fbbf24" content={sharedResult.compileStderr} />
+          )}
+          {sharedResult.stdout && <Section title="stdout" color="#86efac" content={sharedResult.stdout} />}
+          {sharedResult.stderr && <Section title="stderr" color="#f87171" content={sharedResult.stderr} />}
+          {!sharedResult.stdout && !sharedResult.stderr && !sharedResult.compileStderr && (
             <p style={{ opacity: 0.5 }}>(no output)</p>
           )}
         </>

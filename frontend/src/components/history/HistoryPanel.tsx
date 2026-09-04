@@ -8,6 +8,7 @@ interface HistoryPanelProps {
   errorMessage: string | null;
   savingNow: boolean;
   restoringId: string | null;
+  deletingId: string | null;
   onSave: () => void;
   onRefresh: () => void;
   onRestore: (snapshotId: string) => void;
@@ -24,6 +25,7 @@ export function HistoryPanel({
   errorMessage,
   savingNow,
   restoringId,
+  deletingId,
   onSave,
   onRefresh,
   onRestore,
@@ -162,15 +164,16 @@ export function HistoryPanel({
                     <button
                       type="button"
                       onClick={() => onDelete(snap.id)}
-                      disabled={restoring}
+                      disabled={restoring || deletingId === snap.id}
                       style={{
                         ...secondaryButtonStyle,
                         whiteSpace: 'nowrap',
                         color: '#f87171',
                         borderColor: '#7f1d1d',
+                        background: deletingId === snap.id ? '#1f2937' : '#0b1220',
                       }}
                     >
-                      Delete
+                      {deletingId === snap.id ? 'Deleting…' : 'Delete'}
                     </button>
                   )}
                   </div>

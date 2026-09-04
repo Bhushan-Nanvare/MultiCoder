@@ -1,4 +1,4 @@
-import type { ProjectFile, SupportedLanguage } from '@/types/room';
+import type { LastRunResult, ProjectFile, SupportedLanguage } from '@/types/room';
 import { MAX_FILES_PER_ROOM, MAX_PROJECT_PATH_LENGTH } from '@/types/room';
 
 export type ProjectFileInsertOp = {
@@ -15,7 +15,10 @@ export type ProjectStringReplaceOp =
   | { p: ['entryPoint']; od: string }
   | { p: ['entryPoint']; oi: string };
 
-export type ProjectMutationOp = ProjectFileInsertOp | ProjectFileDeleteOp | ProjectStringReplaceOp;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON0 meta ops have flexible shapes
+export type ProjectMetaOp = { p: (string | number)[]; oi?: any; od?: any; oa?: any };
+
+export type ProjectMutationOp = ProjectFileInsertOp | ProjectFileDeleteOp | ProjectStringReplaceOp | ProjectMetaOp;
 
 export function isValidProjectPath(path: string): boolean {
   return (
@@ -133,4 +136,21 @@ export function sortProjectPaths(paths: string[]): string[] {
 
 export function pathDepth(path: string): number {
   return path.split('/').length - 1;
+}
+
+/**
+ * Builds JSON0 ops to set `meta.lastRun` in the ShareDB document.
+ * Handles the case where `meta` doesn't exist yet (first run).
+ */
+export function buildSetLastRunOps(
+  run: LastRunResult,
+  existingMeta: Record<string, unknown> | undefined,
+): ProjectMetaOp[] {
+  if (!existingMeta) {
+    return [{ p: ['meta'], oi: { lastRun: run } }];
+  }
+  if (existingMeta.lastRun) {
+    return [{ p: ['meta', 'lastRun'], od: existingMeta.lastRun, oi: run }];
+  }
+  return [{ p: ['meta', 'lastRun'], oi: run }];
 }

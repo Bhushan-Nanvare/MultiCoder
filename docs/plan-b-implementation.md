@@ -119,9 +119,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
     },
   }
   ```
-- [ ] Add helper `languageToEntryPoint(lang)` in `backend/src/realtime/documentHelpers.ts`.
+- [x] Add helper `languageToEntryPoint(lang)` in `backend/src/realtime/documentHelpers.ts`.
 - [x] Update `readDocument()` return type to `ProjectDocument`.
-- [ ] Update backend tests/manual check: create room → ShareDB doc has `version: 2`.
+- [x] Update backend tests/manual check: create room → ShareDB doc has `version: 2`.
 
 **Files:**
 - `backend/src/realtime/documentService.ts`
@@ -163,8 +163,8 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
   - `renameFile(doc, oldPath, newPath)` — update `entryPoint` if needed
   - `deleteFile(doc, path)` — forbid deleting last file; forbid deleting `entryPoint` without reassigning
   - `listFiles(doc)`
-- [ ] zod schemas for paths (no `..`, no leading `/`, max length).
-- [ ] Unit-free manual test via small script or route behind dev flag (optional); otherwise test through Stage 3 UI.
+- [x] zod schemas for paths (no `..`, no leading `/`, max length).
+- [x] Unit-free manual test via small script or route behind dev flag (optional); otherwise test through Stage 3 UI.
 
 **Files:**
 - `backend/src/realtime/projectFileService.ts` (new)
@@ -440,8 +440,8 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Everyone sees the same Run result.
 
 **Tasks:**
-- [ ] After successful run, author writes `lastRun: { stdout, stderr, exitCode, triggeredBy, at }` to presence or a small ShareDB object field `meta.lastRun`.
-- [ ] OutputPanel reads `meta.lastRun` if newer than local run.
+- [x] After successful run, author writes `lastRun: { stdout, stderr, exitCode, triggeredBy, at }` to presence or a small ShareDB object field `meta.lastRun`.
+- [x] OutputPanel reads `meta.lastRun` if newer than local run.
 
 **COMMIT:** `feat(execution): broadcast last run output to all room members`
 
@@ -483,9 +483,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Viewer can see sync but not edit.
 
 **Tasks:**
-- [ ] Room field: `visibility: 'private' | 'link-edit' | 'link-view'`.
-- [ ] ShareDB middleware or client-side read-only Monaco (`readOnly: true`) when viewer.
-- [ ] WS auth: allow anonymous read for `link-view` (ties to Plan D).
+- [x] Room field: `visibility: 'private' | 'link-edit' | 'link-view'`.
+- [x] ShareDB middleware or client-side read-only Monaco (`readOnly: true`) when viewer.
+- [x] WS auth: allow anonymous read for `link-view` (ties to Plan D).
 
 **COMMIT:** `feat(rooms): add read-only share links`
 
@@ -512,9 +512,9 @@ Estimated total: **6–10 weeks** at ~2–4 hours per session, one milestone per
 **Goal:** Server restart does not wipe live projects.
 
 **Tasks:**
-- [ ] Evaluate `sharedb-postgres` vs Mongo; align with existing Postgres (Neon).
-- [ ] Replace in-memory ShareDB adapter in `shareDbBackend.ts`.
-- [ ] Migration guide in README.
+- [x] Evaluate `sharedb-postgres` vs Mongo; align with existing Postgres (Neon).
+- [x] Replace in-memory ShareDB adapter in `shareDbBackend.ts`.
+- [x] Migration guide in README.
 
 **COMMIT:** `feat(realtime): persist ShareDB documents to Postgres`
 
@@ -580,7 +580,7 @@ After Stage 2+, update these to be project-aware:
 - [x] **Real-time sync** per file; two users can edit different files simultaneously.
 - [x] **Run project** executes entry point with all files in Piston.
 - [x] **Snapshots** save/restore entire project; restore broadcasts.
-- [ ] **Presence** shows who is online; **cursors** visible in shared files.
+- [x] **Presence** shows who is online; **cursors** visible in shared files.
 - [x] At least **one template** on room create.
 - [ ] README updated with multi-file usage screenshots or GIF.
 

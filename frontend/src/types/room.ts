@@ -8,10 +8,27 @@ export interface ProjectFile {
   language?: SupportedLanguage;
 }
 
+export interface LastRunResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  signal: string | null;
+  compileStderr: string | null;
+  language: string;
+  triggeredBy: string | null;
+  triggeredByUsername: string | null;
+  at: string;
+}
+
+export interface ProjectMeta {
+  lastRun?: LastRunResult;
+}
+
 export interface ProjectDocument {
   version: 2;
   entryPoint: string;
   files: Record<string, ProjectFile>;
+  meta?: ProjectMeta;
 }
 
 /**

@@ -8,10 +8,11 @@ import {
   buildDeleteFileOp,
   buildRenameFileOps,
   buildSetEntryPointOps,
+  buildSetLastRunOps,
   type ProjectMutationOp,
 } from '@/realtime/projectOps';
 import { SHAREDB_COLLECTION, getShareDbConnection } from '@/realtime/sharedbConnection';
-import type { ProjectDocument, ProjectFile, SupportedLanguage } from '@/types/room';
+import type { LastRunResult, ProjectDocument, ProjectFile, SupportedLanguage } from '@/types/room';
 
 interface ProjectDocumentState {
   status: 'connecting' | 'ready' | 'error';
@@ -19,6 +20,8 @@ interface ProjectDocumentState {
   files: string[];
   entryPoint: string;
   filesMap: Record<string, ProjectFile>;
+  lastRun: LastRunResult | null;
+  meta: Record<string, unknown> | undefined;
 }
 
 const initialState: ProjectDocumentState = {
@@ -27,14 +30,20 @@ const initialState: ProjectDocumentState = {
   files: [],
   entryPoint: '',
   filesMap: {},
+  lastRun: null,
+  meta: undefined,
 };
 
 function readStateFromDoc(doc: Doc<ProjectDocument>): Omit<ProjectDocumentState, 'status' | 'error'> {
   const normalized = normalizeProjectDocument(doc.data);
+  const meta = normalized.meta as Record<string, unknown> | undefined;
+  const lastRun = (meta?.lastRun as LastRunResult | undefined) ?? null;
   return {
     files: Object.keys(normalized.files).sort(),
     entryPoint: normalized.entryPoint,
     filesMap: normalized.files,
+    lastRun,
+    meta,
   };
 }
 
@@ -167,5 +176,16 @@ export function useProjectDocument(roomId: string) {
     [roomId],
   );
 
-  return { ...state, addFile, renameFile, deleteFile, setEntryPoint };
+  const setLastRun = useCallback(
+    (run: LastRunResult): Promise<void> => {
+      const connection = getShareDbConnection();
+      const doc = connection.get(SHAREDB_COLLECTION, roomId) as Doc<ProjectDocument>;
+      const normalized = normalizeProjectDocument(doc.data);
+      const existingMeta = normalized.meta as Record<string, unknown> | undefined;
+      return submitProjectOps(roomId, buildSetLastRunOps(run, existingMeta));
+    },
+    [roomId],
+  );
+
+  return { ...state, addFile, renameFile, deleteFile, setEntryPoint, setLastRun };
 }
