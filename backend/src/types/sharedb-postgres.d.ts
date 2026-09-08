@@ -3,6 +3,7 @@ declare module 'sharedb-postgres' {
 
   interface PostgresDBOptions {
     connectionString?: string;
+    ssl?: boolean | { rejectUnauthorized: boolean };
   }
 
   class PostgresDB extends DB {
