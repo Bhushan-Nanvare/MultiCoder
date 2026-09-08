@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   await prisma.$connect();
   logger.info('Connected to Postgres');
 
-  const backend = createShareDbBackend();
+  const backend = await createShareDbBackend();
   const documentService = new RealtimeDocumentService(backend);
   const roomRepository = new PrismaRoomRepository(prisma);
   const memberRepository = new PrismaRoomMemberRepository(prisma);

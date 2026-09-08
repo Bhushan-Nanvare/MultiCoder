@@ -7,14 +7,13 @@ import { logger } from '@/utils/logger.js';
  * SHAREDB_STORAGE=postgres) so documents survive server restarts. Falls back
  * to the in-memory MemoryDB adapter for local development.
  */
-export function createShareDbBackend(): ShareDB {
+export async function createShareDbBackend(): Promise<ShareDB> {
   const usePostgres =
     process.env.SHAREDB_STORAGE === 'postgres' || config.isProduction;
 
   if (usePostgres) {
-    // Dynamic import keeps the Postgres driver out of the bundle when unused.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { createShareDbPgAdapter } = require('@/realtime/shareDbPgAdapter.js') as typeof import('@/realtime/shareDbPgAdapter.js');
+    // Dynamic ESM import — safe in both local dev and production.
+    const { createShareDbPgAdapter } = await import('@/realtime/shareDbPgAdapter.js');
     const db = createShareDbPgAdapter();
     logger.info('ShareDB backend: Postgres');
     return new ShareDB({
