@@ -36,7 +36,9 @@ RUN npm ci --omit=dev --no-audit --no-fund \
 # to ship the CLI (devDep) in the runtime image.
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/dist ./dist
+COPY prisma ./prisma
 
 # Drop root. /app needs to be writable for prisma engines + tmp.
 RUN chown -R node:node /app
@@ -46,4 +48,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --quiet --spider http://localhost:${PORT:-8080}/health || exit 1
 
-CMD ["node", "dist/index.js"]
+# Run migrations then start the server.
+# `prisma migrate deploy` is idempotent — safe to run on every boot.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
