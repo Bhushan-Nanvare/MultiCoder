@@ -3,13 +3,12 @@ import { config } from '@/config/index.js';
 import { logger } from '@/utils/logger.js';
 
 /**
- * Creates a ShareDB backend. Uses the Postgres adapter in production (or when
- * SHAREDB_STORAGE=postgres) so documents survive server restarts. Falls back
- * to the in-memory MemoryDB adapter for local development.
+ * Creates a ShareDB backend. Uses the Postgres adapter by default (always in
+ * production) so documents survive server restarts. SHAREDB_STORAGE=memory
+ * opts into a throwaway in-memory store for local experiments.
  */
 export async function createShareDbBackend(): Promise<ShareDB> {
-  const usePostgres =
-    process.env.SHAREDB_STORAGE === 'postgres' || config.isProduction;
+  const usePostgres = config.sharedbStorage === 'postgres' || config.isProduction;
 
   if (usePostgres) {
     // Dynamic ESM import — safe in both local dev and production.
@@ -23,7 +22,7 @@ export async function createShareDbBackend(): Promise<ShareDB> {
     });
   }
 
-  logger.info('ShareDB backend: in-memory (dev)');
+  logger.warn('ShareDB backend: in-memory — room contents are lost on every restart');
   return new ShareDB({
     presence: true,
     doNotForwardSendPresenceErrorsToClient: true,

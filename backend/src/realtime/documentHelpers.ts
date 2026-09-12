@@ -3,6 +3,7 @@ import {
   ENTRY_POINT_BY_LANGUAGE,
   MAX_FILE_BYTES,
   MAX_FILES_PER_ROOM,
+  MAX_PROJECT_META_BYTES,
   MAX_PROJECT_PATH_LENGTH,
   PROJECT_DOCUMENT_VERSION,
   SUPPORTED_LANGUAGES,
@@ -89,6 +90,15 @@ export function validateProjectDocument(doc: ProjectDocument): void {
 
   for (const [path, file] of Object.entries(doc.files)) {
     validateFilePath(path);
+    if (!file || typeof file !== 'object') {
+      throw new ValidationError(`File "${path}" is not a file object`);
+    }
+    if (
+      file.language !== undefined &&
+      !(SUPPORTED_LANGUAGES as readonly string[]).includes(file.language)
+    ) {
+      throw new ValidationError(`File "${path}" has an unsupported language`);
+    }
     if (typeof file.content !== 'string') {
       throw new ValidationError(`File "${path}" has invalid content`);
     }
@@ -109,6 +119,36 @@ export function normalizeDocument(raw: unknown): ProjectDocument {
     return migrated;
   }
   throw new ValidationError('Unrecognized room document shape');
+}
+
+const LIVE_DOCUMENT_KEYS = new Set(['version', 'entryPoint', 'files', 'meta']);
+
+/**
+ * Stricter check for the live document right after a client op is applied: it
+ * must already be v2 (the server migrates legacy docs before clients edit),
+ * carry no unknown top-level fields, and keep `meta` small.
+ */
+export function assertValidLiveDocument(raw: unknown): ProjectDocument {
+  if (!isProjectDocument(raw)) {
+    throw new ValidationError('Room document must be a v2 project');
+  }
+  for (const key of Object.keys(raw)) {
+    if (!LIVE_DOCUMENT_KEYS.has(key)) {
+      throw new ValidationError(`Unexpected document field "${key}"`);
+    }
+  }
+  validateProjectDocument(raw);
+
+  const meta: unknown = raw.meta;
+  if (meta !== undefined) {
+    if (meta === null || typeof meta !== 'object' || Array.isArray(meta)) {
+      throw new ValidationError('Document meta must be an object');
+    }
+    if (Buffer.byteLength(JSON.stringify(meta), 'utf8') > MAX_PROJECT_META_BYTES) {
+      throw new ValidationError(`Document meta exceeds ${MAX_PROJECT_META_BYTES} bytes`);
+    }
+  }
+  return raw;
 }
 
 export function projectEntryContent(doc: ProjectDocument): string {

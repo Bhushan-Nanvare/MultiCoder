@@ -4,10 +4,12 @@ import type ShareDB from 'sharedb';
 import WebSocketJSONStream from '@teamwork/websocket-json-stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { verifySessionToken } from '@/auth/jwt.js';
+import { config } from '@/config/index.js';
 import {
   SESSION_COOKIE_NAME,
   SHAREDB_WS_PATH,
   WS_HEARTBEAT_INTERVAL_MS,
+  WS_MAX_PAYLOAD_BYTES,
 } from '@/constants/index.js';
 import type { ShareDbClientContext } from '@/realtime/shareDbAccess.js';
 import { logger } from '@/utils/logger.js';
@@ -27,10 +29,10 @@ function extractSessionToken(request: IncomingMessage): string | null {
 
 function clientContextFromUpgrade(request: IncomingMessage): ShareDbClientContext | 'invalid' {
   const token = extractSessionToken(request);
-  if (!token) return { userId: null };
+  if (!token) return { userId: null, username: null };
   try {
     const payload = verifySessionToken(token);
-    return { userId: payload.sub };
+    return { userId: payload.sub, username: payload.username };
   } catch (err) {
     logger.debug({ err }, 'Rejecting WS upgrade: invalid session token');
     return 'invalid';
@@ -40,15 +42,26 @@ function clientContextFromUpgrade(request: IncomingMessage): ShareDbClientContex
 /**
  * Attaches a WebSocket server for ShareDB. Authenticated sessions attach their
  * user id; clients with no cookie are allowed through as anonymous so `link-view`
- * rooms can sync. Invalid JWTs are still rejected. Room ACL is enforced in
- * ShareDB middleware.
+ * rooms can sync. Invalid JWTs and browser origins outside CORS_ORIGINS are
+ * rejected. Room ACL is enforced in ShareDB middleware.
  */
 export function attachShareDbWebSocket({ server, backend }: AttachOptions): WebSocketServer {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD_BYTES });
 
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const url = request.url ?? '';
     if (!url.startsWith(SHAREDB_WS_PATH)) {
+      socket.destroy();
+      return;
+    }
+
+    // CORS doesn't apply to WebSocket upgrades, and the session cookie is
+    // SameSite=None in production, so any site could otherwise open a socket
+    // as the visitor. Browsers always send Origin; non-browser clients don't.
+    const origin = request.headers.origin;
+    if (origin && !config.corsOrigins.includes(origin)) {
+      logger.warn({ origin }, 'Rejecting WS upgrade: origin not allowed');
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       socket.destroy();
       return;
     }
@@ -70,6 +83,7 @@ export function attachShareDbWebSocket({ server, backend }: AttachOptions): WebS
     const context: ShareDbClientContext =
       (request as IncomingMessage & { shareDbContext?: ShareDbClientContext }).shareDbContext ?? {
         userId: null,
+        username: null,
       };
     const isAlive = { value: true };
     ws.on('pong', () => {

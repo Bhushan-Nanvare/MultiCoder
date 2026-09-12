@@ -21,6 +21,14 @@ function isContentOp(path: unknown[], filePath: string): path is [string, string
   );
 }
 
+/** True for ops that replace or remove this file (or every file) wholesale. */
+function replacesFile(op: unknown, filePath: string): boolean {
+  const path = (op as { p?: unknown } | null)?.p;
+  if (!Array.isArray(path) || path[0] !== 'files') return false;
+  if (path.length === 1) return true;
+  return path[1] === filePath && !isContentOp(path, filePath);
+}
+
 /**
  * Two-way binding between Monaco and `files[filePath].content` on a ShareDB
  * ProjectDocument. Legacy v1 docs are normalized for reads until the server
@@ -40,12 +48,19 @@ export function bindMonacoToShareDb(
   let applyingRemote = false;
 
   const syncFromDoc = (): void => {
+    // Mid hard-rollback the doc is briefly empty; 'load' fires once it refetches.
+    if (!doc.type) return;
     const normalized = normalizeProjectDocument(doc.data);
     const remoteContent = fileContent(normalized, filePath);
     if (model.getValue() !== remoteContent) {
+      const position = monacoEditor.getPosition();
       applyingRemote = true;
-      model.setValue(remoteContent);
-      applyingRemote = false;
+      try {
+        model.setValue(remoteContent);
+      } finally {
+        applyingRemote = false;
+      }
+      if (position) monacoEditor.setPosition(model.validatePosition(position));
     }
   };
 
@@ -88,6 +103,14 @@ export function bindMonacoToShareDb(
   const handleRemoteOp = (ops: unknown[], source: unknown): void => {
     if (source === true || source === 'local') return;
     if (!Array.isArray(ops)) return;
+
+    // Snapshot restores, renames and deletes replace the file instead of editing
+    // its text. doc.data already holds the result, so reload from it rather than
+    // leaving the editor on stale content.
+    if (ops.some((op) => replacesFile(op, filePath))) {
+      syncFromDoc();
+      return;
+    }
 
     applyingRemote = true;
     try {
@@ -136,10 +159,15 @@ export function bindMonacoToShareDb(
     }
   };
 
+  // A hard rollback refetches the document and emits 'load' instead of ops.
+  const handleLoad = (): void => syncFromDoc();
+
   doc.on('op', handleRemoteOp);
+  doc.on('load', handleLoad);
 
   return () => {
     localChangeListener.dispose();
     doc.off('op', handleRemoteOp);
+    doc.off('load', handleLoad);
   };
 }

@@ -18,6 +18,12 @@ export const HTTP_BODY_LIMIT = '256kb';
 
 export const WS_HEARTBEAT_INTERVAL_MS = 30_000;
 
+/** Largest single message a ShareDB client may send (a full-file paste is ~64 KB). */
+export const WS_MAX_PAYLOAD_BYTES = 1024 * 1024;
+
+/** Room presence channels are `${prefix}${roomId}` (see frontend realtime/shareDbPresence.ts). */
+export const ROOM_PRESENCE_CHANNEL_PREFIX = 'room-presence:';
+
 export const SESSION_COOKIE_NAME = 'multicoder_session';
 
 export const OAUTH_STATE_COOKIE_NAME = 'multicoder_oauth_state';
@@ -29,6 +35,10 @@ export const SESSION_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 // --- Code execution (Piston) ---
 export const EXECUTION_RUN_TIMEOUT_MS = 5_000;
 export const EXECUTION_COMPILE_TIMEOUT_MS = 10_000;
+/** HTTP deadline for one Piston execute call: compile + run budgets plus queueing headroom. */
+export const EXECUTION_REQUEST_TIMEOUT_MS =
+  EXECUTION_COMPILE_TIMEOUT_MS + EXECUTION_RUN_TIMEOUT_MS + 10_000;
+export const PISTON_RUNTIMES_TIMEOUT_MS = 10_000;
 export const EXECUTION_MAX_CODE_BYTES = 64 * 1024; // 64 KB source
 export const EXECUTION_MAX_STDIN_BYTES = 8 * 1024;
 export const EXECUTION_MAX_PROJECT_BYTES = 256 * 1024;
@@ -70,3 +80,5 @@ export const ENTRY_POINT_BY_LANGUAGE: Record<SupportedLanguage, string> = {
 export const MAX_FILES_PER_ROOM = 50;
 export const MAX_FILE_BYTES = 64 * 1024; // 64 KB per file
 export const MAX_PROJECT_PATH_LENGTH = 256;
+/** Cap on the shared `meta` object (last run output etc.) in a room document. */
+export const MAX_PROJECT_META_BYTES = 256 * 1024;

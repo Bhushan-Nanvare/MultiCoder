@@ -33,6 +33,11 @@ export interface SnippetRepository {
     excludeOwnerId: string | null;
     limit: number;
   }): Promise<FingerprintMatch[]>;
+  findSnippetId(input: {
+    ownerId: string | null;
+    language: SupportedLanguage;
+    code: string;
+  }): Promise<string | null>;
 }
 
 export class PrismaSnippetRepository implements SnippetRepository {
@@ -64,6 +69,18 @@ export class PrismaSnippetRepository implements SnippetRepository {
       ownerId: created.ownerId,
       ownerUsername: created.owner?.username ?? null,
     };
+  }
+
+  async findSnippetId(input: {
+    ownerId: string | null;
+    language: SupportedLanguage;
+    code: string;
+  }): Promise<string | null> {
+    const row = await this.prisma.snippet.findFirst({
+      where: { ownerId: input.ownerId, language: input.language, code: input.code },
+      select: { id: true },
+    });
+    return row?.id ?? null;
   }
 
   async findMatches(input: {

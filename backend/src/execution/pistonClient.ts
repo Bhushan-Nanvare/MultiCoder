@@ -1,6 +1,8 @@
 import {
   EXECUTION_COMPILE_TIMEOUT_MS,
+  EXECUTION_REQUEST_TIMEOUT_MS,
   EXECUTION_RUN_TIMEOUT_MS,
+  PISTON_RUNTIMES_TIMEOUT_MS,
 } from '@/constants/index.js';
 import { AppError } from '@/utils/errors.js';
 
@@ -48,6 +50,19 @@ interface PistonErrorBody {
   message?: string;
 }
 
+function isTimeout(err: unknown): boolean {
+  const name = typeof err === 'object' && err !== null ? (err as { name?: unknown }).name : null;
+  return name === 'TimeoutError' || name === 'AbortError';
+}
+
+function timeoutError(url: string): AppError {
+  return new AppError(
+    `Piston did not respond in time (${url})`,
+    504,
+    'EXECUTION_PROVIDER_TIMEOUT',
+  );
+}
+
 /**
  * HTTP client for a Piston v2 API (self-hosted or emkc.org). Lists runtimes at
  * startup and executes code in an isolated sandbox.
@@ -62,8 +77,10 @@ export class PistonClient {
       response = await fetch(url, {
         method: 'GET',
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(PISTON_RUNTIMES_TIMEOUT_MS),
       });
     } catch (err) {
+      if (isTimeout(err)) throw timeoutError(url);
       const message = err instanceof Error ? err.message : String(err);
       throw new AppError(
         `Piston runtimes unavailable at ${url}: ${message}`,
@@ -80,7 +97,7 @@ export class PistonClient {
       );
     }
 
-    const data = (await response.json()) as PistonRuntime[];
+    const data = await this.readJson<PistonRuntime[]>(response, url);
     if (!Array.isArray(data) || data.length === 0) {
       throw new AppError(
         'Piston returned no runtimes — is the piston container running?',
@@ -115,8 +132,10 @@ export class PistonClient {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(EXECUTION_REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
+      if (isTimeout(err)) throw timeoutError(url);
       const message = err instanceof Error ? err.message : String(err);
       throw new AppError(
         `Piston execute unavailable at ${url}: ${message}`,
@@ -148,6 +167,16 @@ export class PistonClient {
       );
     }
 
-    return (await response.json()) as PistonExecuteResponse;
+    return this.readJson<PistonExecuteResponse>(response, url);
+  }
+
+  /** The request's timeout signal also covers reading the response body. */
+  private async readJson<T>(response: Response, url: string): Promise<T> {
+    try {
+      return (await response.json()) as T;
+    } catch (err) {
+      if (isTimeout(err)) throw timeoutError(url);
+      throw err;
+    }
   }
 }

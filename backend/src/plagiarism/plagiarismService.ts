@@ -58,13 +58,23 @@ export class PlagiarismService {
 
     let stored: { snippetId: string } | null = null;
     if (input.store && fingerprints.length > 0) {
-      const created = await this.repository.storeSnippet({
+      // Re-checking unchanged code shouldn't add another copy to the corpus.
+      const existingId = await this.repository.findSnippetId({
         ownerId: input.ownerId,
         language: input.language,
         code: input.code,
-        fingerprints,
       });
-      stored = { snippetId: created.id };
+      const snippetId =
+        existingId ??
+        (
+          await this.repository.storeSnippet({
+            ownerId: input.ownerId,
+            language: input.language,
+            code: input.code,
+            fingerprints,
+          })
+        ).id;
+      stored = { snippetId };
     }
 
     return {

@@ -46,3 +46,7 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-flash-latest
+      # Render can't run Piston (it needs a privileged container). Point this at
+      # a Piston instance you host elsewhere, or the Run button won't work.
+      - key: PISTON_BASE_URL
+        sync: false
