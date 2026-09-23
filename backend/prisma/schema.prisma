@@ -76,7 +76,7 @@ model Snapshot {
   author User? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([roomId, createdAt])
-  @@map("snapshots")
+  @@map("room_snapshots")
 }
 
 // --- Plagiarism detection (Phase 3B) ---
@@ -108,4 +108,32 @@ model Fingerprint {
   @@index([hash])
   @@index([snippetId])
   @@map("fingerprints")
+}
+
+// --- ShareDB storage (owned by sharedb-postgres) ---
+// The adapter hardcodes the table names `ops` and `snapshots` and reads/writes
+// them itself. They are declared here only so Prisma sees them as part of the
+// schema — otherwise `prisma migrate dev` treats them as drift and drops them.
+// Never read or write these from application code; go through ShareDB.
+
+model ShareDbOp {
+  collection String @db.VarChar(255)
+  docId      String @map("doc_id") @db.VarChar(255)
+  version    Int
+  operation  Json
+
+  @@id([collection, docId, version])
+  @@map("ops")
+}
+
+model ShareDbSnapshot {
+  collection String  @db.VarChar(255)
+  docId      String  @map("doc_id") @db.VarChar(255)
+  version    Int
+  docType    String  @map("doc_type") @db.VarChar(255)
+  data       Json
+  metadata   Json?
+
+  @@id([collection, docId])
+  @@map("snapshots")
 }
