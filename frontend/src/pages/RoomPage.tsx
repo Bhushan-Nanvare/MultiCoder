@@ -276,7 +276,7 @@ export function RoomPage(): JSX.Element {
 
     try {
       await api.reviewCodeStream(
-        { language: room.language, code },
+        { roomId: room.id, language: room.language, code },
         {
           onChunk: (text) => {
             setReviewStreamChars((prev) => prev + text.length);
@@ -310,17 +310,13 @@ export function RoomPage(): JSX.Element {
 
   const handleCheckPlagiarism = useCallback(async (): Promise<void> => {
     if (!room) return;
-    const code = editorRef.current?.getValue() ?? '';
-    if (!code.trim()) {
-      setPlagiarismError('Nothing to check — the editor is empty.');
-      setPlagiarismResult(null);
-      return;
-    }
     setCheckingPlagiarism(true);
     setPlagiarismError(null);
     setPlagiarismResult(null);
     try {
-      const result = await api.checkPlagiarism({ language: room.language, code, store: true });
+      // The server reads the submission from the room's own project, so there
+      // is nothing to send but the room id.
+      const result = await api.checkPlagiarism({ roomId: room.id });
       setPlagiarismResult(result);
     } catch (err: unknown) {
       setPlagiarismError(err instanceof Error ? err.message : 'Plagiarism check failed');
@@ -542,7 +538,7 @@ export function RoomPage(): JSX.Element {
           <div>
             <div style={{ fontWeight: 600 }}>{room.name}</div>
             <div style={{ fontSize: 12, opacity: 0.6 }}>
-              {room.language} · {room.id}
+              {room.language} · {room.mode} · {room.id}
               {!canEdit ? ' · view only' : ''}
             </div>
           </div>
@@ -633,6 +629,8 @@ export function RoomPage(): JSX.Element {
         checkingPlagiarism={checkingPlagiarism}
         onToggleHistory={handleToggleHistory}
         historyOpen={historyOpen}
+        showReview={room.canUseAiReview}
+        showPlagiarism={room.canUsePlagiarism}
       />
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
         <FileTree

@@ -9,7 +9,7 @@ import type {
   ReviewStreamCallbacks,
   ReviewStreamEvent,
 } from '@/types/review';
-import type { ProjectTemplateId, ProjectTemplateSummary, Room, RoomMember, RoomVisibility, SupportedLanguage } from '@/types/room';
+import type { ProjectTemplateId, ProjectTemplateSummary, Room, RoomMember, RoomMode, RoomVisibility, SupportedLanguage } from '@/types/room';
 import type { SnapshotDetail, SnapshotSummary } from '@/types/snapshot';
 
 interface ApiErrorBody {
@@ -69,6 +69,7 @@ export const api = {
       language?: SupportedLanguage;
       templateId?: ProjectTemplateId;
       visibility?: RoomVisibility;
+      mode?: RoomMode;
     } = {},
   ): Promise<Room> {
     const json = await request<{ data: Room }>('/api/rooms', {

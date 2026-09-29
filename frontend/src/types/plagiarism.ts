@@ -17,8 +17,10 @@ export interface PlagiarismResult {
   stored: { snippetId: string } | null;
 }
 
+/**
+ * Only the room id travels: the server reads the submission from the room's
+ * live project, so a score can't be faked by sending different code.
+ */
 export interface PlagiarismRequest {
-  language: SupportedLanguage;
-  code: string;
-  store?: boolean;
+  roomId: string;
 }

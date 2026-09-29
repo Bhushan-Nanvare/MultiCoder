@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { UserRepository } from '@/auth/userRepository.js';
 import {
   DEFAULT_ROOM_LANGUAGE,
+  DEFAULT_ROOM_MODE,
   DEFAULT_ROOM_VISIBILITY,
   ROOM_ID_LENGTH,
   type RoomVisibility,
@@ -12,6 +13,8 @@ import {
   assertCanEditRoom,
   canEditRoom,
   canReadRoom,
+  canUseAiReview,
+  canUsePlagiarism,
   isOwner,
   withAccess,
   type RoomAccessView,
@@ -43,6 +46,7 @@ export class RoomService {
       name: input.name?.trim() || `Untitled room ${id}`,
       language,
       visibility: input.visibility ?? DEFAULT_ROOM_VISIBILITY,
+      mode: input.mode ?? DEFAULT_ROOM_MODE,
       ownerId: input.ownerId ?? null,
       createdAt: now,
       updatedAt: now,
@@ -109,6 +113,28 @@ export class RoomService {
     } catch {
       return false;
     }
+  }
+
+  /** Throws unless the caller may run AI review on this room; returns the room. */
+  async requireAiReviewAccess(roomId: string, userId: string): Promise<Room> {
+    const room = await this.get(roomId);
+    const actor = await this.actorFor(room, userId);
+    if (!canUseAiReview(room, actor)) {
+      throw new ForbiddenError('AI review in an assessment room is only available to its owner');
+    }
+    return room;
+  }
+
+  /** Throws unless the caller may run the plagiarism check; returns the room. */
+  async requirePlagiarismAccess(roomId: string, userId: string): Promise<Room> {
+    const room = await this.get(roomId);
+    const actor = await this.actorFor(room, userId);
+    if (!canUsePlagiarism(room, actor)) {
+      throw new ForbiddenError(
+        'The plagiarism check is only available to the owner of an assessment room',
+      );
+    }
+    return room;
   }
 
   async updateVisibility(id: string, userId: string, visibility: RoomVisibility): Promise<Room> {

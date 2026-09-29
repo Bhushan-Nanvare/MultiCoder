@@ -19,6 +19,9 @@ interface EditorToolbarProps {
   onToggleHistory: () => void;
   historyOpen: boolean;
   readOnly?: boolean;
+  /** Room mode and role decide these; the server enforces the same rules. */
+  showReview?: boolean;
+  showPlagiarism?: boolean;
 }
 
 export function EditorToolbar({
@@ -38,6 +41,8 @@ export function EditorToolbar({
   onToggleHistory,
   historyOpen,
   readOnly = false,
+  showReview = true,
+  showPlagiarism = true,
 }: EditorToolbarProps): JSX.Element {
   return (
     <div
@@ -126,6 +131,7 @@ export function EditorToolbar({
         <span aria-hidden>⟳</span>
         History
       </button>
+      {showPlagiarism && (
       <button
         type="button"
         onClick={onCheckPlagiarism}
@@ -146,6 +152,8 @@ export function EditorToolbar({
         <span aria-hidden>⧉</span>
         {checkingPlagiarism ? 'Checking…' : 'Check plagiarism'}
       </button>
+      )}
+      {showReview && (
       <button
         type="button"
         onClick={onReview}
@@ -166,6 +174,7 @@ export function EditorToolbar({
         <span aria-hidden>✦</span>
         {reviewing ? 'Reviewing…' : 'AI review'}
       </button>
+      )}
       <button
         type="button"
         onClick={onRun}

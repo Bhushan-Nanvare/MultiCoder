@@ -17,6 +17,11 @@ enum RoomVisibility {
   link_view
 }
 
+enum RoomMode {
+  collaborate
+  assessment
+}
+
 model User {
   id          String   @id @default(cuid())
   githubId    String?  @unique
@@ -40,6 +45,7 @@ model Room {
   name       String
   language   String
   visibility RoomVisibility @default(link_edit)
+  mode       RoomMode       @default(collaborate)
   ownerId    String?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -47,6 +53,7 @@ model Room {
   owner     User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   snapshots Snapshot[]
   members   RoomMember[]
+  snippet   Snippet?
 
   @@index([ownerId])
   @@map("rooms")
@@ -85,12 +92,16 @@ model Snapshot {
 model Snippet {
   id              String   @id @default(cuid())
   ownerId         String?
+  /// Assessment room this submission belongs to. One per room; null for
+  /// snippets stored before rooms had modes, which are never compared.
+  roomId          String?  @unique
   language        String
   code            String
   fingerprintCount Int
   createdAt       DateTime @default(now())
 
   owner        User?         @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  room         Room?         @relation(fields: [roomId], references: [id], onDelete: Cascade)
   fingerprints Fingerprint[]
 
   @@index([ownerId])

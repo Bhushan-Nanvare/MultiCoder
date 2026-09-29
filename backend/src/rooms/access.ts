@@ -13,6 +13,8 @@ export interface RoomAccessView {
   isOwner: boolean;
   isEditor: boolean;
   canDelete: boolean;
+  canUseAiReview: boolean;
+  canUsePlagiarism: boolean;
 }
 
 export function canReadRoom(room: Pick<Room, 'visibility' | 'ownerId'>, actor: RoomActor): boolean {
@@ -44,6 +46,29 @@ export function isOwner(room: Pick<Room, 'ownerId'>, userId: string | null): boo
   return userId !== null && room.ownerId === userId;
 }
 
+/**
+ * In a collaborate room AI review is a helper, so anyone who can open the room
+ * may use it. In an assessment room it belongs to the examiner — the candidate
+ * must not get AI help on the work being judged.
+ */
+export function canUseAiReview(
+  room: Pick<Room, 'mode' | 'visibility' | 'ownerId'>,
+  actor: RoomActor,
+): boolean {
+  if (!actor.userId) return false;
+  if (room.mode === 'assessment') return isOwner(room, actor.userId);
+  return canReadRoom(room, actor);
+}
+
+/** Plagiarism comparison exists only in assessment rooms, and only for the owner. */
+export function canUsePlagiarism(
+  room: Pick<Room, 'mode' | 'ownerId'>,
+  actor: RoomActor,
+): boolean {
+  if (!actor.userId) return false;
+  return room.mode === 'assessment' && isOwner(room, actor.userId);
+}
+
 export function withAccess(room: Room, actor: RoomActor): Room & RoomAccessView {
   const owner = isOwner(room, actor.userId);
   return {
@@ -52,6 +77,8 @@ export function withAccess(room: Room, actor: RoomActor): Room & RoomAccessView 
     isOwner: owner,
     isEditor: actor.isEditor,
     canDelete: owner,
+    canUseAiReview: canUseAiReview(room, actor),
+    canUsePlagiarism: canUsePlagiarism(room, actor),
   };
 }
 

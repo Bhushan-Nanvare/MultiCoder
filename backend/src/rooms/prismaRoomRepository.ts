@@ -1,7 +1,10 @@
 import type { PrismaClient, Room as PrismaRoom, RoomVisibility as PrismaVisibility } from '@prisma/client';
 import {
+  DEFAULT_ROOM_MODE,
   DEFAULT_ROOM_VISIBILITY,
+  ROOM_MODES,
   SUPPORTED_LANGUAGES,
+  type RoomMode,
   type RoomVisibility,
   type SupportedLanguage,
 } from '@/constants/index.js';
@@ -12,6 +15,13 @@ function toLanguage(value: string): SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(value)
     ? (value as SupportedLanguage)
     : 'javascript';
+}
+
+// Mode values are spelled the same in Prisma and the API, unlike visibility.
+function toMode(value: string): RoomMode {
+  return (ROOM_MODES as readonly string[]).includes(value)
+    ? (value as RoomMode)
+    : DEFAULT_ROOM_MODE;
 }
 
 const TO_API: Record<PrismaVisibility, RoomVisibility> = {
@@ -32,6 +42,7 @@ function fromPrisma(row: PrismaRoom): Room {
     name: row.name,
     language: toLanguage(row.language),
     visibility: TO_API[row.visibility] ?? DEFAULT_ROOM_VISIBILITY,
+    mode: toMode(row.mode),
     ownerId: row.ownerId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -48,6 +59,7 @@ export class PrismaRoomRepository implements RoomRepository {
         name: room.name,
         language: room.language,
         visibility: TO_PRISMA[room.visibility],
+        mode: room.mode,
         ownerId: room.ownerId,
       },
     });

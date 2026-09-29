@@ -45,6 +45,7 @@ export interface Room {
   name: string;
   language: SupportedLanguage;
   visibility: RoomVisibility;
+  mode: RoomMode;
   ownerId?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -52,10 +53,21 @@ export interface Room {
   isOwner: boolean;
   isEditor?: boolean;
   canDelete?: boolean;
+  /** The server decides these from the room mode and the caller's role. */
+  canUseAiReview: boolean;
+  canUsePlagiarism: boolean;
 }
 
 export const ROOM_VISIBILITIES = ['private', 'link-edit', 'link-view'] as const;
 export type RoomVisibility = (typeof ROOM_VISIBILITIES)[number];
+
+/**
+ * `collaborate` is a team project: AI review helps everyone, no plagiarism check.
+ * `assessment` is someone being judged: both tools belong to the room owner.
+ * Fixed when the room is created.
+ */
+export const ROOM_MODES = ['collaborate', 'assessment'] as const;
+export type RoomMode = (typeof ROOM_MODES)[number];
 
 /**
  * @deprecated Replaced by ProjectDocument after Stage 1 migration.

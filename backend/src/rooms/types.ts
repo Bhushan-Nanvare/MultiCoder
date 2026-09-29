@@ -1,4 +1,4 @@
-import type { RoomVisibility, SupportedLanguage } from '@/constants/index.js';
+import type { RoomMode, RoomVisibility, SupportedLanguage } from '@/constants/index.js';
 import type { ProjectTemplateId } from '@/projects/templates/types.js';
 
 export interface Room {
@@ -6,6 +6,7 @@ export interface Room {
   name: string;
   language: SupportedLanguage;
   visibility: RoomVisibility;
+  mode: RoomMode;
   ownerId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -16,6 +17,7 @@ export interface CreateRoomInput {
   language?: SupportedLanguage;
   templateId?: ProjectTemplateId;
   visibility?: RoomVisibility;
+  mode?: RoomMode;
   ownerId?: string | null;
 }
 

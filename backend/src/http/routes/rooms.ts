@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
-import { ROOM_VISIBILITIES, SUPPORTED_LANGUAGES } from '@/constants/index.js';
+import { ROOM_MODES, ROOM_VISIBILITIES, SUPPORTED_LANGUAGES } from '@/constants/index.js';
 import { listProjectTemplates, PROJECT_TEMPLATE_IDS } from '@/projects/templates/index.js';
 import type { RealtimeDocumentService } from '@/realtime/documentService.js';
 import type { RoomService } from '@/rooms/roomService.js';
@@ -11,6 +11,7 @@ const createRoomBody = z.object({
   language: z.enum(SUPPORTED_LANGUAGES).optional(),
   templateId: z.enum(PROJECT_TEMPLATE_IDS).optional(),
   visibility: z.enum(ROOM_VISIBILITIES).optional(),
+  mode: z.enum(ROOM_MODES).optional(),
 });
 
 const updateRoomBody = z.object({

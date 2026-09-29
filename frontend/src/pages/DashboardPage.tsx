@@ -7,6 +7,7 @@ import {
   type ProjectTemplateId,
   type ProjectTemplateSummary,
   type Room,
+  type RoomMode,
   type RoomVisibility,
   type SupportedLanguage,
 } from '@/types/room';
@@ -24,6 +25,7 @@ export function DashboardPage(): JSX.Element {
   const [language, setLanguage] = useState<SupportedLanguage>('javascript');
   const [templateId, setTemplateId] = useState<ProjectTemplateId | ''>('');
   const [visibility, setVisibility] = useState<RoomVisibility>('link-edit');
+  const [mode, setMode] = useState<RoomMode>('collaborate');
 
   const selectedTemplate = templates.find((template) => template.id === templateId);
 
@@ -75,6 +77,7 @@ export function DashboardPage(): JSX.Element {
         name: name.trim() || undefined,
         language: selectedTemplate?.language ?? language,
         visibility,
+        mode,
         ...(templateId ? { templateId } : {}),
       });
       navigate(`/rooms/${room.id}`);
@@ -220,6 +223,22 @@ export function DashboardPage(): JSX.Element {
               <option value="private">Private — only you and invited editors</option>
             </select>
           </label>
+          <label style={{ display: 'grid', gap: 4 }}>
+            <span>Room mode</span>
+            <select
+              value={mode}
+              onChange={(event) => setMode(event.target.value as RoomMode)}
+              style={inputStyle}
+            >
+              <option value="collaborate">Collaborate — team project</option>
+              <option value="assessment">Assessment — you are reviewing someone</option>
+            </select>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              {mode === 'assessment'
+                ? 'Only you see AI review and the plagiarism check. Fixed once the room is created.'
+                : 'AI review is available to everyone in the room; no plagiarism check.'}
+            </span>
+          </label>
           <button type="submit" disabled={creating} style={buttonStyle}>
             {creating ? 'Creating…' : 'Create room'}
           </button>
@@ -250,7 +269,7 @@ export function DashboardPage(): JSX.Element {
               <div>
                 <div style={{ fontWeight: 600 }}>{room.name}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {room.language} · {room.visibility}
+                  {room.language} · {room.mode} · {room.visibility}
                   {room.isEditor && !room.isOwner ? ' · editor' : ''}
                   {' · created '}
                   {new Date(room.createdAt).toLocaleString()}

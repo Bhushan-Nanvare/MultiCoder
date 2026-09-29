@@ -14,6 +14,15 @@ export const ROOM_VISIBILITIES = ['private', 'link-edit', 'link-view'] as const;
 export type RoomVisibility = (typeof ROOM_VISIBILITIES)[number];
 export const DEFAULT_ROOM_VISIBILITY: RoomVisibility = 'link-edit';
 
+/**
+ * `collaborate` is a team project: AI review helps everyone, plagiarism is off.
+ * `assessment` is someone being judged: both tools belong to the room owner.
+ * Fixed when the room is created.
+ */
+export const ROOM_MODES = ['collaborate', 'assessment'] as const;
+export type RoomMode = (typeof ROOM_MODES)[number];
+export const DEFAULT_ROOM_MODE: RoomMode = 'collaborate';
+
 export const HTTP_BODY_LIMIT = '256kb';
 
 export const WS_HEARTBEAT_INTERVAL_MS = 30_000;

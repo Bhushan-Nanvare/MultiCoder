@@ -101,12 +101,14 @@ export function buildApp({
   );
   app.use(
     '/api/review',
-    buildReviewRouter({ aiReviewService, requireAuth, rateLimit: reviewRateLimit }),
+    buildReviewRouter({ aiReviewService, roomService, requireAuth, rateLimit: reviewRateLimit }),
   );
   app.use(
     '/api/check-plagiarism',
     buildPlagiarismRouter({
       plagiarismService,
+      roomService,
+      documentService,
       requireAuth,
       rateLimit: plagiarismRateLimit,
     }),

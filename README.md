@@ -11,7 +11,8 @@ A real-time collaborative code editor with sandboxed execution, AI-powered code 
 - **Code execution** — Run the entire project or a single file via self-hosted [Piston](https://github.com/engineer-man/piston); output broadcasts to all connected peers in real-time
 - **GitHub OAuth login** — JWT in HTTP-only cookie, verified on both REST calls and WebSocket upgrades
 - **AI code review** — Gemini Flash returns structured JSON (time complexity, suggestions, bugs with line+severity, security concerns, 1-100 score), streamed token-by-token via Server-Sent Events
-- **Plagiarism detection** — Rabin-Karp k-grams + winnowing fingerprints, Jaccard similarity against everyone's submitted snippets
+- **Room modes** — *Collaborate* (team project: AI review helps everyone, no plagiarism check) or *Assessment* (an examiner reviewing someone: AI review and plagiarism belong to the room owner alone). Chosen at creation and enforced server-side
+- **Plagiarism detection** — Rabin-Karp k-grams + winnowing fingerprints, Jaccard similarity across submissions from other assessment rooms
 - **Room history** — manual snapshot save + restore with retention pruning
 - **ShareDB persistence** — OT documents persist to Postgres via `sharedb-postgres`; server restarts don't wipe projects
 
@@ -169,7 +170,7 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `GET` | `/auth/github/callback` | — | OAuth callback (sets session cookie, redirects to dashboard) |
 | `POST` | `/auth/logout` | — | Clears session cookie |
 | `GET` | `/api/user/me` | ✅ | Current user |
-| `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`, `visibility`) |
+| `POST` | `/api/rooms` | ✅ | Create room (optional `templateId`, `visibility`, `mode`) |
 | `GET` | `/api/rooms/templates` | ✅ | Starter project templates |
 | `GET` | `/api/rooms` | ✅ | List rooms you own or were invited to |
 | `PATCH` | `/api/rooms/:id` | ✅ | Owner updates `visibility` |
@@ -184,9 +185,9 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 | `POST` | `/api/rooms/:id/snapshots/:snapshotId/restore` | ✅ | Restore snapshot to live project (broadcast) |
 | `DELETE` | `/api/rooms/:id/snapshots/:snapshotId` | ✅ | Owner deletes a snapshot |
 | `POST` | `/api/execute` | ✅ + 10/min | Run code (Piston) |
-| `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review |
-| `POST` | `/api/review/stream` | ✅ + 5/min | SSE: `event: chunk|result|error` |
-| `POST` | `/api/check-plagiarism` | ✅ + 20/min | Submit/check fingerprints |
+| `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review; body needs `roomId` (assessment rooms: owner only) |
+| `POST` | `/api/review/stream` | ✅ + 5/min | Same access check, then SSE: `event: chunk|result|error` |
+| `POST` | `/api/check-plagiarism` | ✅ + 20/min | Body is just `{ roomId }`; assessment rooms only, owner only |
 | WS upgrade | `/sharedb` | cookie optional | Anonymous allowed for `link-view` reads; invalid JWT still 401; browser `Origin` must be in `CORS_ORIGINS` |
 
 All error responses share `{ error: { code, message, details? } }`.
@@ -259,6 +260,7 @@ The image is multi-stage (~150 MB), runs as `node` (non-root), and includes a `H
 - **Multi-file OT** — each project is a single ShareDB JSON0 document (`{ version, entryPoint, files: { [path]: { content, language? } }, meta? }`). File tree mutations (add/rename/delete) are atomic JSON0 ops that compose cleanly with text edits.
 - **ShareDB persistence** — `sharedb-postgres` stores OT documents in the same Postgres (Neon) database, in dev and production. `SHAREDB_STORAGE=memory` opts into a throwaway in-memory store.
 - **Owner/editor RBAC** — room owner can set visibility and invite editors. The `RoomMember` table + `RoomService` enforce access on both REST and WebSocket layers.
+- **Room modes decided server-side** — the UI hides the AI review and plagiarism buttons from the flags in `withAccess`, but `RoomService.requireAiReviewAccess` / `requirePlagiarismAccess` are what actually enforce it, so a candidate can't reach either endpoint directly. The plagiarism check reads the submission from the room's own ShareDB document rather than trusting the browser, keeps one snippet per room (`snippets.roomId` is unique, so re-checking replaces it), and never compares a room with itself, its owner, or any collaborate room.
 - **Server-validated realtime edits** — ShareDB `commit` middleware re-checks the document after every client op (file count, size and paths, entry point, `meta` size, run attribution) and rejects bad ops, which clients roll back. Presence channels require read access to the room, presence payloads must match the signed-in user, and client queries are refused.
 - **Run output broadcast** — execution results are written to `meta.lastRun` in the ShareDB document via JSON0 ops, so all connected clients see the output immediately.
 - **Provider abstraction for AI** — `AiReviewProvider` interface in `src/ai/types.ts` is the seam. Adding Ollama/Groq/OpenAI = one new class + one factory case (`src/ai/providerFactory.ts` uses an exhaustive `never`-typed switch).

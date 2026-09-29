@@ -1,16 +1,10 @@
 import type { SupportedLanguage } from '@/constants/index.js';
 
-export interface SubmitSnippetInput {
-  language: SupportedLanguage;
-  code: string;
-  ownerId: string | null;
-}
-
 export interface CheckPlagiarismInput {
+  /** Assessment room whose submission is being checked. */
+  roomId: string;
   language: SupportedLanguage;
   code: string;
-  /** When true, also persist the submitted snippet for future comparisons. */
-  store: boolean;
   /** Caller id; matches against the same user are suppressed. */
   ownerId: string | null;
 }

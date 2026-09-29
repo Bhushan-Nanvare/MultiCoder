@@ -21,6 +21,8 @@ export interface ReviewResult {
 }
 
 export interface ReviewRequest {
+  /** The server checks the room's mode and your role before answering. */
+  roomId: string;
   language: SupportedLanguage;
   code: string;
 }

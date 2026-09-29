@@ -34,6 +34,7 @@ export class PlagiarismService {
     const rawMatches = await this.repository.findMatches({
       language: input.language,
       fingerprints,
+      excludeRoomId: input.roomId,
       excludeOwnerId: input.ownerId,
       limit: PLAGIARISM_MAX_MATCHES_RETURNED,
     });
@@ -57,24 +58,15 @@ export class PlagiarismService {
     matches.sort((a, b) => b.similarity - a.similarity);
 
     let stored: { snippetId: string } | null = null;
-    if (input.store && fingerprints.length > 0) {
-      // Re-checking unchanged code shouldn't add another copy to the corpus.
-      const existingId = await this.repository.findSnippetId({
+    if (fingerprints.length > 0) {
+      const saved = await this.repository.upsertRoomSnippet({
+        roomId: input.roomId,
         ownerId: input.ownerId,
         language: input.language,
         code: input.code,
+        fingerprints,
       });
-      const snippetId =
-        existingId ??
-        (
-          await this.repository.storeSnippet({
-            ownerId: input.ownerId,
-            language: input.language,
-            code: input.code,
-            fingerprints,
-          })
-        ).id;
-      stored = { snippetId };
+      stored = { snippetId: saved.id };
     }
 
     return {

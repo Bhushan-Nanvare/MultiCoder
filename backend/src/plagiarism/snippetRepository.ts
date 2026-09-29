@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import type { SupportedLanguage } from '@/constants/index.js';
 
 export interface StoredSnippet {
@@ -21,7 +21,9 @@ export interface FingerprintMatch {
 }
 
 export interface SnippetRepository {
-  storeSnippet(input: {
+  /** Replaces the single submission stored for an assessment room. */
+  upsertRoomSnippet(input: {
+    roomId: string;
     ownerId: string | null;
     language: SupportedLanguage;
     code: string;
@@ -30,66 +32,66 @@ export interface SnippetRepository {
   findMatches(input: {
     language: SupportedLanguage;
     fingerprints: string[];
+    excludeRoomId: string;
     excludeOwnerId: string | null;
     limit: number;
   }): Promise<FingerprintMatch[]>;
-  findSnippetId(input: {
-    ownerId: string | null;
-    language: SupportedLanguage;
-    code: string;
-  }): Promise<string | null>;
 }
 
 export class PrismaSnippetRepository implements SnippetRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async storeSnippet(input: {
+  async upsertRoomSnippet(input: {
+    roomId: string;
     ownerId: string | null;
     language: SupportedLanguage;
     code: string;
     fingerprints: string[];
   }): Promise<StoredSnippet> {
-    const created = await this.prisma.snippet.create({
-      data: {
-        ownerId: input.ownerId,
-        language: input.language,
-        code: input.code,
-        fingerprintCount: input.fingerprints.length,
-        fingerprints: {
-          create: input.fingerprints.map((hash) => ({ hash })),
+    return this.prisma.$transaction(async (tx) => {
+      // Deleting cascades to the old fingerprints, so re-checking a room
+      // replaces its submission rather than adding another copy to the corpus.
+      await tx.snippet.deleteMany({ where: { roomId: input.roomId } });
+      const created = await tx.snippet.create({
+        data: {
+          roomId: input.roomId,
+          ownerId: input.ownerId,
+          language: input.language,
+          code: input.code,
+          fingerprintCount: input.fingerprints.length,
+          fingerprints: {
+            create: input.fingerprints.map((hash) => ({ hash })),
+          },
         },
-      },
-      include: { owner: { select: { username: true } } },
+        include: { owner: { select: { username: true } } },
+      });
+      return {
+        id: created.id,
+        language: created.language as SupportedLanguage,
+        fingerprintCount: created.fingerprintCount,
+        createdAt: created.createdAt,
+        ownerId: created.ownerId,
+        ownerUsername: created.owner?.username ?? null,
+      };
     });
-    return {
-      id: created.id,
-      language: created.language as SupportedLanguage,
-      fingerprintCount: created.fingerprintCount,
-      createdAt: created.createdAt,
-      ownerId: created.ownerId,
-      ownerUsername: created.owner?.username ?? null,
-    };
-  }
-
-  async findSnippetId(input: {
-    ownerId: string | null;
-    language: SupportedLanguage;
-    code: string;
-  }): Promise<string | null> {
-    const row = await this.prisma.snippet.findFirst({
-      where: { ownerId: input.ownerId, language: input.language, code: input.code },
-      select: { id: true },
-    });
-    return row?.id ?? null;
   }
 
   async findMatches(input: {
     language: SupportedLanguage;
     fingerprints: string[];
+    excludeRoomId: string;
     excludeOwnerId: string | null;
     limit: number;
   }): Promise<FingerprintMatch[]> {
     if (input.fingerprints.length === 0) return [];
+
+    // Candidates are other assessment rooms' submissions only: `roomId` is null
+    // for anything stored before modes existed, and neither this room nor the
+    // caller's own work may match.
+    const exclusions: Prisma.SnippetWhereInput[] = [{ NOT: { roomId: input.excludeRoomId } }];
+    if (input.excludeOwnerId) {
+      exclusions.push({ NOT: { ownerId: input.excludeOwnerId } });
+    }
 
     // Pull every fingerprint row whose hash appears in the query set. For
     // realistic snippet sizes this stays small; if the catalog grows large
@@ -99,7 +101,8 @@ export class PrismaSnippetRepository implements SnippetRepository {
         hash: { in: input.fingerprints },
         snippet: {
           language: input.language,
-          ...(input.excludeOwnerId ? { ownerId: { not: input.excludeOwnerId } } : {}),
+          roomId: { not: null },
+          AND: exclusions,
         },
       },
       select: { snippetId: true },
