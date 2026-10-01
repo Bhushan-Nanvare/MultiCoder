@@ -130,6 +130,13 @@ cd frontend && npm run dev    # → http://localhost:5173
 
 Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 
+### Tests
+
+```bash
+cd backend  && npm test   # access + mode rules, document validation, fingerprints, Piston payload
+cd frontend && npm test   # Monaco ↔ ShareDB binding, including snapshot restore
+```
+
 ## Environment variables
 
 ### Backend (`backend/.env`)
@@ -268,6 +275,18 @@ The image is multi-stage (~150 MB), runs as `node` (non-root), and includes a `H
 - **Plagiarism algorithm** — winnowing per Schleimer/Wilkerson/Aiken (SIGMOD 2003): Rabin-Karp k-grams (k=5), sliding-window min (w=4), right-most tie-break. The normalizer strips comments and whitespace, so reformatted copies score 100%. Identifiers are not normalized yet, so copies with renamed variables still share fingerprints but score lower (27–50% in local tests, depending on how much of the code is identifiers).
 - **Streaming AI review** — POST + SSE rather than `EventSource` (which is GET-only, can't carry the auth cookie cleanly). Custom SSE parser in `frontend/src/api/sseClient.ts`.
 - **Snapshot restore is broadcast-aware** — the server swaps `files` in the live ShareDB document with a single JSON0 op, and every open editor reloads the affected file from the document, so a restore reaches all connected clients at once.
+
+## Known limitations
+
+Written down so they aren't a surprise:
+
+- **Piston isn't hosted in production.** Render can't run a privileged container, so the Run button only works locally, or against a Piston instance you host yourself and point `PISTON_BASE_URL` at.
+- **Sign-in needs one shared domain.** Frontend and API sit on different sites, so the session cookie is a third-party cookie and Safari (plus Firefox's strict mode) drops it. A custom domain for both fixes it.
+- **Plagiarism doesn't normalise identifiers.** Renaming every variable takes a copy from 100% down to roughly 27–50%. Token-level normalisation would close that gap and isn't written yet.
+- **Rate limits are per process.** They live in an in-memory map, so a second backend instance doubles the real limit.
+- **No replay.** Every op is stored with a timestamp, so stepping through how a solution was written is possible, but it isn't built.
+- **Mobile is untested.** The room layout assumes a desktop-width screen; there are no breakpoints.
+- **Tests cover the logic, not the wiring.** Access rules, document validation, fingerprinting, the Piston payload and the editor binding are tested. HTTP routes and React components are not.
 
 ## Documents
 
