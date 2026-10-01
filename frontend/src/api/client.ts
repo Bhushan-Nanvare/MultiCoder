@@ -137,18 +137,6 @@ export const api = {
     await request<void>('/auth/logout', { method: 'POST' });
   },
 
-  async executeCode(input: {
-    language: SupportedLanguage;
-    code: string;
-    stdin?: string;
-  }): Promise<ExecutionResult> {
-    const json = await request<{ data: ExecutionResult }>('/api/execute', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
-    return json.data;
-  },
-
   async executeProject(input: ExecuteProjectRequest): Promise<ExecutionResult> {
     const json = await request<{ data: ExecutionResult }>('/api/execute', {
       method: 'POST',
@@ -176,13 +164,6 @@ export const api = {
   async listSnapshots(roomId: string): Promise<SnapshotSummary[]> {
     const json = await request<{ data: SnapshotSummary[] }>(
       `/api/rooms/${encodeURIComponent(roomId)}/snapshots`,
-    );
-    return json.data;
-  },
-
-  async getSnapshot(roomId: string, snapshotId: string): Promise<SnapshotDetail> {
-    const json = await request<{ data: SnapshotDetail }>(
-      `/api/rooms/${encodeURIComponent(roomId)}/snapshots/${encodeURIComponent(snapshotId)}`,
     );
     return json.data;
   },
