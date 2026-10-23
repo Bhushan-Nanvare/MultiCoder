@@ -16,6 +16,7 @@ import { PresenceBar } from '@/components/project/PresenceBar';
 import { TabBar } from '@/components/project/TabBar';
 import { ReviewPanel } from '@/components/review/ReviewPanel';
 import { useAuth } from '@/auth/AuthContext';
+import { buildProjectArchive, downloadArchive, projectZipFilename } from '@/project/exportZip';
 import type { ExecutionResult, RunScope } from '@/types/execution';
 import type { PlagiarismResult } from '@/types/plagiarism';
 import type { ReviewResult } from '@/types/review';
@@ -53,6 +54,8 @@ export function RoomPage(): JSX.Element {
   const [activeFilePath, setActiveFilePath] = useState('');
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [treeError, setTreeError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [treeBusy, setTreeBusy] = useState(false);
   const [runScope, setRunScope] = useState<RunScope>('project');
   const [newFileOpen, setNewFileOpen] = useState(false);
@@ -195,6 +198,20 @@ export function RoomPage(): JSX.Element {
     },
     [project.setEntryPoint],
   );
+
+  const handleExportZip = useCallback(async (): Promise<void> => {
+    if (!room) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const bytes = await buildProjectArchive(project.filesMap);
+      downloadArchive(bytes, projectZipFilename(room.name, room.id));
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'Failed to build the archive');
+    } finally {
+      setExporting(false);
+    }
+  }, [room, project.filesMap]);
 
   const handleRun = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -629,6 +646,8 @@ export function RoomPage(): JSX.Element {
         checkingPlagiarism={checkingPlagiarism}
         onToggleHistory={handleToggleHistory}
         historyOpen={historyOpen}
+        onExport={handleExportZip}
+        exporting={exporting}
         showReview={room.canUseAiReview}
         showPlagiarism={room.canUsePlagiarism}
       />
@@ -657,9 +676,9 @@ export function RoomPage(): JSX.Element {
             onSelect={setActiveFilePath}
             onClose={closeTab}
           />
-          {treeError && (
+          {(treeError ?? exportError) && (
             <div style={{ padding: '6px 12px', color: '#f87171', fontSize: 12, background: '#0f172a' }}>
-              {treeError}
+              {treeError ?? exportError}
             </div>
           )}
           <div style={{ flex: 1, minHeight: 0 }}>

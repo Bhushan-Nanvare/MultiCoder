@@ -133,9 +133,17 @@ Open `http://localhost:5173`, sign in with GitHub, create a room, share the URL.
 ### Tests
 
 ```bash
+npm test   # from the repo root: runs both suites
+```
+
+Or per package:
+
+```bash
 cd backend  && npm test   # access + mode rules, document validation, fingerprints, Piston payload
 cd frontend && npm test   # Monaco ↔ ShareDB binding, including snapshot restore
 ```
+
+The root `package.json` has no dependencies of its own — it only forwards `test`, `typecheck` and `build` into `backend/` and `frontend/`, which stay separate npm projects.
 
 ## Environment variables
 

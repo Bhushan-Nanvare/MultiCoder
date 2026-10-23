@@ -18,6 +18,8 @@ interface EditorToolbarProps {
   checkingPlagiarism: boolean;
   onToggleHistory: () => void;
   historyOpen: boolean;
+  onExport: () => void;
+  exporting: boolean;
   readOnly?: boolean;
   /** Room mode and role decide these; the server enforces the same rules. */
   showReview?: boolean;
@@ -40,6 +42,8 @@ export function EditorToolbar({
   checkingPlagiarism,
   onToggleHistory,
   historyOpen,
+  onExport,
+  exporting,
   readOnly = false,
   showReview = true,
   showPlagiarism = true,
@@ -112,6 +116,22 @@ export function EditorToolbar({
         </button>
       </div>
       <div style={{ flex: 1 }} />
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={exporting}
+        style={{
+          background: '#1f2937',
+          color: '#e2e8f0',
+          border: '1px solid #334155',
+          borderRadius: 6,
+          padding: '6px 14px',
+          fontSize: 13,
+          cursor: exporting ? 'wait' : 'pointer',
+        }}
+      >
+        {exporting ? 'Preparing…' : 'Download ZIP'}
+      </button>
       <button
         type="button"
         onClick={onToggleHistory}
