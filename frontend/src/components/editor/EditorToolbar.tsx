@@ -18,6 +18,8 @@ interface EditorToolbarProps {
   checkingPlagiarism: boolean;
   onToggleHistory: () => void;
   historyOpen: boolean;
+  onToggleChat: () => void;
+  chatOpen: boolean;
   onExport: () => void;
   exporting: boolean;
   readOnly?: boolean;
@@ -42,6 +44,8 @@ export function EditorToolbar({
   checkingPlagiarism,
   onToggleHistory,
   historyOpen,
+  onToggleChat,
+  chatOpen,
   onExport,
   exporting,
   readOnly = false,
@@ -116,6 +120,21 @@ export function EditorToolbar({
         </button>
       </div>
       <div style={{ flex: 1 }} />
+      <button
+        type="button"
+        onClick={onToggleChat}
+        style={{
+          background: chatOpen ? '#334155' : '#1f2937',
+          color: '#e2e8f0',
+          border: '1px solid #334155',
+          borderRadius: 6,
+          padding: '6px 14px',
+          fontSize: 13,
+          cursor: 'pointer',
+        }}
+      >
+        Chat
+      </button>
       <button
         type="button"
         onClick={onExport}

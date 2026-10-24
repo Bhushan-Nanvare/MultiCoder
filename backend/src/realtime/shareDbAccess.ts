@@ -1,5 +1,10 @@
 import type ShareDB from 'sharedb';
-import { ROOM_PRESENCE_CHANNEL_PREFIX, SHAREDB_COLLECTION } from '@/constants/index.js';
+import {
+  CHAT_COLLECTION,
+  ROOM_PRESENCE_CHANNEL_PREFIX,
+  SHAREDB_COLLECTION,
+} from '@/constants/index.js';
+import { assertValidChatDocument, insertedMessages } from '@/realtime/chatDocument.js';
 import { assertValidLiveDocument } from '@/realtime/documentHelpers.js';
 import type { RoomService } from '@/rooms/roomService.js';
 import { logger } from '@/utils/logger.js';
@@ -57,6 +62,10 @@ function roomIdFromPresenceChannel(channel: unknown): string | null {
   return roomId.length > 0 ? roomId : null;
 }
 
+function isKnownCollection(collection: string): boolean {
+  return collection === SHAREDB_COLLECTION || collection === CHAT_COLLECTION;
+}
+
 function editsMeta(components: unknown): boolean {
   return (
     Array.isArray(components) &&
@@ -84,7 +93,7 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
     agent: AgentLike,
     callback: Callback,
   ): void => {
-    if (collection !== SHAREDB_COLLECTION) {
+    if (!isKnownCollection(collection)) {
       deny(callback, 'Unknown collection');
       return;
     }
@@ -129,7 +138,7 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
   });
 
   backend.use('readSnapshots', (context, next) => {
-    if (context.collection !== SHAREDB_COLLECTION) {
+    if (!isKnownCollection(context.collection)) {
       deny(next, 'Unknown collection');
       return;
     }
@@ -158,7 +167,7 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
   });
 
   backend.use('submit', (context, next) => {
-    if (context.collection !== SHAREDB_COLLECTION) {
+    if (!isKnownCollection(context.collection)) {
       deny(next, 'Unknown collection');
       return;
     }
@@ -167,11 +176,18 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
       return;
     }
     const { userId } = agentState(context.agent);
-    roomService
-      .userCanEdit(context.id, userId)
+    const isChat = context.collection === CHAT_COLLECTION;
+    const allowed =
+      isChat && userId
+        ? roomService.userCanRead(context.id, userId)
+        : isChat
+          ? Promise.resolve(false)
+          : roomService.userCanEdit(context.id, userId);
+
+    allowed
       .then((ok) => {
         if (!ok) {
-          deny(next, 'This room is read-only');
+          deny(next, isChat ? 'Sign in to post in this room' : 'This room is read-only');
           return;
         }
         next();
@@ -192,13 +208,26 @@ export function installRoomAccessMiddleware(backend: ShareDB, roomService: RoomS
     }
     const op = context.op as { create?: unknown; del?: unknown; op?: unknown };
     if (op.create !== undefined || op.del !== undefined) {
-      deny(next, 'Clients cannot create or delete room documents', OP_REJECTED_CODE);
+      deny(next, 'Clients cannot create or delete documents', OP_REJECTED_CODE);
       return;
     }
+    const { userId, username } = agentState(context.agent);
     try {
+      if (context.collection === CHAT_COLLECTION) {
+        assertValidChatDocument(context.snapshot?.data);
+        const impersonates = insertedMessages(op.op).some(
+          (message) => message.userId !== userId || message.username !== username,
+        );
+        if (impersonates) {
+          deny(next, 'Chat messages must be sent as yourself', OP_REJECTED_CODE);
+          return;
+        }
+        next();
+        return;
+      }
+
       const doc = assertValidLiveDocument(context.snapshot?.data);
       const lastRun = doc.meta?.lastRun;
-      const { userId, username } = agentState(context.agent);
       if (
         lastRun &&
         editsMeta(op.op) &&

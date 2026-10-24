@@ -137,6 +137,7 @@ export function buildRoomRouter({
       // Recreates an empty project if the live document was lost (e.g. a dev
       // server that ran with in-memory ShareDB storage). No-op when it exists.
       await documentService.initializeDocument(id, room.language);
+      await documentService.initializeChat(id);
       await documentService.migrateLegacyIfNeeded(id);
       res.json({ data: await roomService.toPublic(room, userId) });
     } catch (err) {

@@ -1,5 +1,6 @@
 import type ShareDB from 'sharedb';
-import { SHAREDB_COLLECTION, type SupportedLanguage } from '@/constants/index.js';
+import { CHAT_COLLECTION, SHAREDB_COLLECTION, type SupportedLanguage } from '@/constants/index.js';
+import { createEmptyChatDocument } from '@/realtime/chatDocument.js';
 import {
   buildLegacyMigrationOps,
   createEmptyProjectDocument,
@@ -44,6 +45,24 @@ export class RealtimeDocumentService {
       await new Promise<void>((resolve, reject) => {
         doc.create(payload, (createErr) => {
           if (createErr) reject(createErr);
+          else resolve();
+        });
+      });
+    } finally {
+      connection.close();
+    }
+  }
+
+  async initializeChat(roomId: string): Promise<void> {
+    const connection = this.backend.connect();
+    const doc = connection.get(CHAT_COLLECTION, roomId);
+
+    try {
+      await fetchDoc(doc);
+      if (doc.type) return;
+      await new Promise<void>((resolve, reject) => {
+        doc.create(createEmptyChatDocument(), (err) => {
+          if (err) reject(err);
           else resolve();
         });
       });

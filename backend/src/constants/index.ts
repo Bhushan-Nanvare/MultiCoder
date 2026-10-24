@@ -2,6 +2,12 @@ export const ROOM_ID_LENGTH = 10;
 
 export const SHAREDB_COLLECTION = 'rooms';
 
+export const CHAT_COLLECTION = 'chat';
+
+export const CHAT_DOCUMENT_VERSION = 1 as const;
+export const CHAT_MAX_MESSAGE_LENGTH = 2_000;
+export const CHAT_MAX_MESSAGES = 200;
+
 export const SHAREDB_WS_PATH = '/sharedb';
 
 export const DEFAULT_ROOM_LANGUAGE = 'javascript';

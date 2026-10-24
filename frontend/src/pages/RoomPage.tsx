@@ -7,6 +7,7 @@ import {
 } from '@/components/editor/CollaborativeEditor';
 import { EditorToolbar } from '@/components/editor/EditorToolbar';
 import { OutputPanel } from '@/components/editor/OutputPanel';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
 import { FilePathModal } from '@/components/project/FilePathModal';
@@ -23,6 +24,7 @@ import type { ReviewResult } from '@/types/review';
 import type { Room, RoomMember, RoomVisibility } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
+import { useRoomChat } from '@/realtime/useRoomChat';
 import { useRoomPresence } from '@/realtime/useRoomPresence';
 
 export function RoomPage(): JSX.Element {
@@ -61,6 +63,7 @@ export function RoomPage(): JSX.Element {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
   const [editorsOpen, setEditorsOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -69,6 +72,7 @@ export function RoomPage(): JSX.Element {
 
   const canEdit = Boolean(room?.canEdit);
   const project = useProjectDocument(room?.id ?? '');
+  const chat = useRoomChat(room?.id ?? '', user);
   const presence = useRoomPresence({
     roomId: room?.id ?? '',
     user,
@@ -368,7 +372,14 @@ export function RoomPage(): JSX.Element {
       return next;
     });
     setEditorsOpen(false);
+    setChatOpen(false);
   }, [refreshSnapshots]);
+
+  const handleToggleChat = useCallback(() => {
+    setChatOpen((prev) => !prev);
+    setHistoryOpen(false);
+    setEditorsOpen(false);
+  }, []);
 
   const handleSaveSnapshot = useCallback(async (): Promise<void> => {
     if (!room) return;
@@ -434,6 +445,7 @@ export function RoomPage(): JSX.Element {
       return next;
     });
     setHistoryOpen(false);
+    setChatOpen(false);
   }, [refreshMembers]);
 
   const handleInviteEditor = useCallback(
@@ -646,6 +658,8 @@ export function RoomPage(): JSX.Element {
         checkingPlagiarism={checkingPlagiarism}
         onToggleHistory={handleToggleHistory}
         historyOpen={historyOpen}
+        onToggleChat={handleToggleChat}
+        chatOpen={chatOpen}
         onExport={handleExportZip}
         exporting={exporting}
         showReview={room.canUseAiReview}
@@ -775,6 +789,16 @@ export function RoomPage(): JSX.Element {
         onDismiss={() => setHistoryOpen(false)}
         readOnly={!canEdit}
         canDeleteSnapshots={Boolean(room.isOwner)}
+      />
+      <ChatPanel
+        open={chatOpen}
+        messages={chat.messages}
+        status={chat.status}
+        errorMessage={chat.error}
+        canPost={Boolean(user)}
+        currentUserId={user?.id ?? null}
+        onSend={chat.send}
+        onDismiss={() => setChatOpen(false)}
       />
       <EditorsPanel
         open={editorsOpen}

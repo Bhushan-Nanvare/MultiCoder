@@ -11,6 +11,7 @@ A real-time collaborative code editor with sandboxed execution, AI-powered code 
 - **Code execution** — Run the entire project or a single file via self-hosted [Piston](https://github.com/engineer-man/piston); output broadcasts to all connected peers in real-time
 - **GitHub OAuth login** — JWT in HTTP-only cookie, verified on both REST calls and WebSocket upgrades
 - **AI code review** — Gemini Flash returns structured JSON (time complexity, suggestions, bugs with line+severity, security concerns, 1-100 score), streamed token-by-token via Server-Sent Events
+- **Room chat** — a message panel per room, carried by the same OT layer as the code (a second ShareDB collection), so it persists and needs no extra endpoints. Anyone who can open the room reads it; signed-in users post
 - **Room modes** — *Collaborate* (team project: AI review helps everyone, no plagiarism check) or *Assessment* (an examiner reviewing someone: AI review and plagiarism belong to the room owner alone). Chosen at creation and enforced server-side
 - **Plagiarism detection** — Rabin-Karp k-grams + winnowing fingerprints, Jaccard similarity across submissions from other assessment rooms
 - **Room history** — manual snapshot save + restore with retention pruning
