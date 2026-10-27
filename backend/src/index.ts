@@ -6,6 +6,7 @@ import { PrismaUserRepository } from '@/auth/userRepository.js';
 import { config } from '@/config/index.js';
 import { disconnectPrisma, getPrismaClient } from '@/db/prismaClient.js';
 import { ExecutionService } from '@/execution/executionService.js';
+import { GithubService } from '@/github/githubService.js';
 import { PistonClient } from '@/execution/pistonClient.js';
 import { buildApp } from '@/http/app.js';
 import { buildOptionalAuth, buildRequireAuth } from '@/http/middleware/auth.js';
@@ -50,6 +51,8 @@ async function main(): Promise<void> {
   const snippetRepository = new PrismaSnippetRepository(prisma);
   const plagiarismService = new PlagiarismService(snippetRepository);
 
+  const githubService = new GithubService(userRepository, roomService, documentService);
+
   const snapshotRepository = new PrismaSnapshotRepository(prisma);
   const snapshotService = new SnapshotService(snapshotRepository, roomService, documentService);
 
@@ -61,6 +64,7 @@ async function main(): Promise<void> {
     aiReviewService,
     plagiarismService,
     snapshotService,
+    githubService,
     requireAuth,
     optionalAuth,
   });

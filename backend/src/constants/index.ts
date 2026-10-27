@@ -43,6 +43,28 @@ export const SESSION_COOKIE_NAME = 'multicoder_session';
 
 export const OAUTH_STATE_COOKIE_NAME = 'multicoder_oauth_state';
 
+// GitHub registers one callback URL, but it also accepts subdirectories of it,
+// which is how the repository consent gets its own landing route.
+export const GITHUB_CONNECT_CALLBACK_PATH = '/auth/github/callback/connect';
+export const GITHUB_CONNECT_SCOPE = 'public_repo';
+export const GITHUB_STATE_COOKIE_NAME = 'multicoder_github_state';
+export const GITHUB_RETURN_COOKIE_NAME = 'multicoder_github_return';
+export const GITHUB_API_BASE = 'https://api.github.com';
+export const GITHUB_REQUEST_TIMEOUT_MS = 15_000;
+export const GITHUB_REPO_PAGE_SIZE = 50;
+export const GITHUB_IMPORT_MAX_TOTAL_BYTES = 512 * 1024;
+export const GITHUB_RATE_LIMIT_MAX = 20;
+export const GITHUB_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+export const BINARY_FILE_EXTENSIONS = [
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'icns',
+  'pdf', 'zip', 'gz', 'tgz', 'bz2', 'xz', '7z', 'rar', 'jar', 'war',
+  'exe', 'dll', 'so', 'dylib', 'bin', 'class', 'pyc', 'o', 'a', 'wasm',
+  'mp3', 'wav', 'ogg', 'mp4', 'mov', 'avi', 'webm',
+  'ttf', 'otf', 'woff', 'woff2', 'eot',
+  'db', 'sqlite', 'sqlite3', 'psd', 'ai', 'sketch',
+] as const;
+
 export const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export const SESSION_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days

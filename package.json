@@ -5,6 +5,8 @@
   "scripts": {
     "test": "npm run test --prefix backend && npm run test --prefix frontend",
     "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend"
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "migrate": "npm run prisma:deploy --prefix backend",
+    "migrate:status": "npm run prisma:status --prefix backend"
   }
 }

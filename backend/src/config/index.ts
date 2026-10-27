@@ -29,6 +29,14 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1).default('gemini-flash-latest'),
   PISTON_BASE_URL: z.string().url().default('http://localhost:2000/api/v2'),
+  // Absent simply disables the GitHub integration; tokens are never stored in
+  // the clear.
+  TOKEN_ENCRYPTION_KEY: z
+    .string()
+    .refine((value) => Buffer.from(value, 'base64').length === 32, {
+      message: 'TOKEN_ENCRYPTION_KEY must be 32 bytes encoded as base64',
+    })
+    .optional(),
   SHAREDB_STORAGE: z.enum(['memory', 'postgres']).default('postgres'),
 });
 
@@ -50,6 +58,8 @@ export type AppConfig = {
   geminiModel: string;
   pistonBaseUrl: string;
   sharedbStorage: 'memory' | 'postgres';
+  tokenEncryptionKey: string | null;
+  githubIntegrationEnabled: boolean;
   isProduction: boolean;
   isDevelopment: boolean;
 };
@@ -83,6 +93,8 @@ export const config: AppConfig = {
   geminiModel: env.GEMINI_MODEL,
   pistonBaseUrl: env.PISTON_BASE_URL,
   sharedbStorage: env.SHAREDB_STORAGE,
+  tokenEncryptionKey: env.TOKEN_ENCRYPTION_KEY ?? null,
+  githubIntegrationEnabled: Boolean(env.TOKEN_ENCRYPTION_KEY),
   isProduction: env.NODE_ENV === 'production',
   isDevelopment: env.NODE_ENV === 'development',
 };

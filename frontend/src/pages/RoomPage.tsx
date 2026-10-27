@@ -12,6 +12,7 @@ import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PlagiarismPanel } from '@/components/plagiarism/PlagiarismPanel';
 import { FilePathModal } from '@/components/project/FilePathModal';
 import { FileTree } from '@/components/project/FileTree';
+import { GithubPanel } from '@/components/project/GithubPanel';
 import { EditorsPanel } from '@/components/project/EditorsPanel';
 import { PresenceBar } from '@/components/project/PresenceBar';
 import { TabBar } from '@/components/project/TabBar';
@@ -24,6 +25,7 @@ import type { ReviewResult } from '@/types/review';
 import type { Room, RoomMember, RoomVisibility } from '@/types/room';
 import type { SnapshotSummary } from '@/types/snapshot';
 import { useProjectDocument } from '@/realtime/useProjectDocument';
+import { useGithub } from '@/github/useGithub';
 import { useRoomChat } from '@/realtime/useRoomChat';
 import { useRoomPresence } from '@/realtime/useRoomPresence';
 
@@ -64,6 +66,7 @@ export function RoomPage(): JSX.Element {
   const [renamePath, setRenamePath] = useState<string | null>(null);
   const [editorsOpen, setEditorsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export function RoomPage(): JSX.Element {
   const canEdit = Boolean(room?.canEdit);
   const project = useProjectDocument(room?.id ?? '');
   const chat = useRoomChat(room?.id ?? '', user);
+  const github = useGithub(room?.id ?? '', githubOpen);
   const presence = useRoomPresence({
     roomId: room?.id ?? '',
     user,
@@ -379,6 +383,14 @@ export function RoomPage(): JSX.Element {
     setChatOpen((prev) => !prev);
     setHistoryOpen(false);
     setEditorsOpen(false);
+    setGithubOpen(false);
+  }, []);
+
+  const handleToggleGithub = useCallback(() => {
+    setGithubOpen((prev) => !prev);
+    setChatOpen(false);
+    setHistoryOpen(false);
+    setEditorsOpen(false);
   }, []);
 
   const handleSaveSnapshot = useCallback(async (): Promise<void> => {
@@ -660,6 +672,9 @@ export function RoomPage(): JSX.Element {
         historyOpen={historyOpen}
         onToggleChat={handleToggleChat}
         chatOpen={chatOpen}
+        onToggleGithub={handleToggleGithub}
+        githubOpen={githubOpen}
+        showGithub={Boolean(room.isOwner)}
         onExport={handleExportZip}
         exporting={exporting}
         showReview={room.canUseAiReview}
@@ -789,6 +804,20 @@ export function RoomPage(): JSX.Element {
         onDismiss={() => setHistoryOpen(false)}
         readOnly={!canEdit}
         canDeleteSnapshots={Boolean(room.isOwner)}
+      />
+      <GithubPanel
+        open={githubOpen}
+        connection={github.connection}
+        repos={github.repos}
+        loading={github.loading}
+        errorMessage={github.error}
+        importingRepo={github.importingRepo}
+        lastImport={github.lastImport}
+        connectUrl={api.githubConnectUrl(`/rooms/${room.id}`)}
+        onRefresh={() => void github.refresh()}
+        onImport={(fullName, branch) => void github.importRepo(fullName, branch)}
+        onDisconnect={() => void github.disconnect()}
+        onDismiss={() => setGithubOpen(false)}
       />
       <ChatPanel
         open={chatOpen}

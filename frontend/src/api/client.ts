@@ -2,6 +2,7 @@ import { env } from '@/config/env';
 import { readSseFrames } from '@/api/sseClient';
 import type { AuthUser } from '@/types/auth';
 import type { ExecutionResult, ExecuteProjectRequest } from '@/types/execution';
+import type { GithubConnection, GithubImportResult, GithubRepoSummary } from '@/types/github';
 import type { PlagiarismRequest, PlagiarismResult } from '@/types/plagiarism';
 import type {
   ReviewRequest,
@@ -126,6 +127,37 @@ export const api = {
       `/api/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(userId)}`,
       { method: 'DELETE' },
     );
+  },
+
+  // A full-page redirect, because the consent round trip has to set cookies.
+  githubConnectUrl(returnTo: string): string {
+    return `${env.apiUrl}/api/github/connect?returnTo=${encodeURIComponent(returnTo)}`;
+  },
+
+  async githubStatus(): Promise<GithubConnection> {
+    const json = await request<{ data: GithubConnection }>('/api/github/status');
+    return json.data;
+  },
+
+  async listGithubRepos(): Promise<GithubRepoSummary[]> {
+    const json = await request<{ data: GithubRepoSummary[] }>('/api/github/repos');
+    return json.data;
+  },
+
+  async importGithubRepo(input: {
+    roomId: string;
+    fullName: string;
+    branch?: string;
+  }): Promise<GithubImportResult> {
+    const json = await request<{ data: GithubImportResult }>('/api/github/import', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return json.data;
+  },
+
+  async disconnectGithub(): Promise<void> {
+    await request<void>('/api/github/connection', { method: 'DELETE' });
   },
 
   async me(): Promise<AuthUser> {

@@ -11,6 +11,7 @@ A real-time collaborative code editor with sandboxed execution, AI-powered code 
 - **Code execution** — Run the entire project or a single file via self-hosted [Piston](https://github.com/engineer-man/piston); output broadcasts to all connected peers in real-time
 - **GitHub OAuth login** — JWT in HTTP-only cookie, verified on both REST calls and WebSocket upgrades
 - **AI code review** — Gemini Flash returns structured JSON (time complexity, suggestions, bugs with line+severity, security concerns, 1-100 score), streamed token-by-token via Server-Sent Events
+- **Import from GitHub** — connect your account (a separate `public_repo` consent, not part of sign-in), pick one of your repositories, and its files replace the room's project live in every open window. Owner only; tokens are stored AES-256-GCM encrypted
 - **Room chat** — a message panel per room, carried by the same OT layer as the code (a second ShareDB collection), so it persists and needs no extra endpoints. Anyone who can open the room reads it; signed-in users post
 - **Room modes** — *Collaborate* (team project: AI review helps everyone, no plagiarism check) or *Assessment* (an examiner reviewing someone: AI review and plagiarism belong to the room owner alone). Chosen at creation and enforced server-side
 - **Plagiarism detection** — Rabin-Karp k-grams + winnowing fingerprints, Jaccard similarity across submissions from other assessment rooms
@@ -168,6 +169,7 @@ The root `package.json` has no dependencies of its own — it only forwards `tes
 | `GEMINI_API_KEY` | **yes** | — | From aistudio.google.com/app/apikey |
 | `GEMINI_MODEL` | no | `gemini-flash-latest` | Pin a specific version if you prefer |
 | `PISTON_BASE_URL` | no | `http://localhost:2000/api/v2` | Piston v2 API base URL (self-hosted via `docker compose up -d piston`) |
+| `TOKEN_ENCRYPTION_KEY` | no | — | 32 random bytes as base64. Encrypts stored GitHub tokens; unset disables the GitHub import |
 | `SHAREDB_STORAGE` | no | `postgres` | `memory` gives a throwaway store wiped on every restart; production always uses `postgres` |
 
 ### Frontend (`frontend/.env`)
@@ -203,6 +205,12 @@ The root `package.json` has no dependencies of its own — it only forwards `tes
 | `POST` | `/api/execute` | ✅ + 10/min | Run code (Piston) |
 | `POST` | `/api/review` | ✅ + 5/min | Non-streaming AI review; body needs `roomId` (assessment rooms: owner only) |
 | `POST` | `/api/review/stream` | ✅ + 5/min | Same access check, then SSE: `event: chunk|result|error` |
+| `GET` | `/api/github/status` | ✅ | Whether this user has connected a repository scope |
+| `GET` | `/api/github/connect` | ✅ | Redirects to GitHub for `public_repo` consent |
+| `GET` | `/auth/github/callback/connect` | cookie | Stores the encrypted token, returns to `returnTo` |
+| `DELETE` | `/api/github/connection` | ✅ | Forgets the stored token |
+| `GET` | `/api/github/repos` | ✅ + 20/min | Repositories you own |
+| `POST` | `/api/github/import` | ✅ + 20/min | Replaces a room's project from a repo; room owner only |
 | `POST` | `/api/check-plagiarism` | ✅ + 20/min | Body is just `{ roomId }`; assessment rooms only, owner only |
 | WS upgrade | `/sharedb` | cookie optional | Anonymous allowed for `link-view` reads; invalid JWT still 401; browser `Origin` must be in `CORS_ORIGINS` |
 

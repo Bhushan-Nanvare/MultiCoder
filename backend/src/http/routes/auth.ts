@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { timingSafeEqual } from 'node:crypto';
 import type { AuthService } from '@/auth/authService.js';
 import {
   clearSessionCookieOptions,
@@ -17,13 +16,7 @@ import {
 } from '@/constants/index.js';
 import { AppError } from '@/utils/errors.js';
 import { logger } from '@/utils/logger.js';
-
-function safeEqual(a: string, b: string): boolean {
-  const aBuf = Buffer.from(a);
-  const bBuf = Buffer.from(b);
-  if (aBuf.length !== bBuf.length) return false;
-  return timingSafeEqual(aBuf, bBuf);
-}
+import { safeEqual } from '@/utils/secrets.js';
 
 export function buildAuthRouter(authService: AuthService): Router {
   const router = Router();

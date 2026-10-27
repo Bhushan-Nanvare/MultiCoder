@@ -8,6 +8,9 @@ import {
   AI_REVIEW_RATE_LIMIT_WINDOW_MS,
   EXECUTION_RATE_LIMIT_MAX,
   EXECUTION_RATE_LIMIT_WINDOW_MS,
+  GITHUB_CONNECT_CALLBACK_PATH,
+  GITHUB_RATE_LIMIT_MAX,
+  GITHUB_RATE_LIMIT_WINDOW_MS,
   HTTP_BODY_LIMIT,
   PLAGIARISM_RATE_LIMIT_MAX,
   PLAGIARISM_RATE_LIMIT_WINDOW_MS,
@@ -15,8 +18,13 @@ import {
   SNAPSHOT_RATE_LIMIT_WINDOW_MS,
 } from '@/constants/index.js';
 import type { ExecutionService } from '@/execution/executionService.js';
+import type { GithubService } from '@/github/githubService.js';
 import { buildAuthRouter } from '@/http/routes/auth.js';
 import { buildExecuteRouter } from '@/http/routes/execute.js';
+import {
+  buildGithubConnectCallbackRouter,
+  buildGithubRouter,
+} from '@/http/routes/github.js';
 import { buildPlagiarismRouter } from '@/http/routes/plagiarism.js';
 import { buildReviewRouter } from '@/http/routes/review.js';
 import { buildRoomRouter } from '@/http/routes/rooms.js';
@@ -39,6 +47,7 @@ interface BuildAppOptions {
   aiReviewService: AiReviewService;
   plagiarismService: PlagiarismService;
   snapshotService: SnapshotService;
+  githubService: GithubService;
   requireAuth: RequestHandler;
   optionalAuth: RequestHandler;
 }
@@ -51,6 +60,7 @@ export function buildApp({
   aiReviewService,
   plagiarismService,
   snapshotService,
+  githubService,
   requireAuth,
   optionalAuth,
 }: BuildAppOptions): Express {
@@ -84,7 +94,20 @@ export function buildApp({
     windowMs: SNAPSHOT_RATE_LIMIT_WINDOW_MS,
   });
 
+  const githubRateLimit = buildRateLimit({
+    max: GITHUB_RATE_LIMIT_MAX,
+    windowMs: GITHUB_RATE_LIMIT_WINDOW_MS,
+  });
+
+  app.use(
+    GITHUB_CONNECT_CALLBACK_PATH,
+    buildGithubConnectCallbackRouter({ githubService, optionalAuth }),
+  );
   app.use('/auth', buildAuthRouter(authService));
+  app.use(
+    '/api/github',
+    buildGithubRouter({ githubService, requireAuth, rateLimit: githubRateLimit }),
+  );
   app.use('/api/user', buildUserRouter(requireAuth));
   app.use('/api/rooms', buildRoomRouter({ roomService, documentService, requireAuth, optionalAuth }));
   app.use(

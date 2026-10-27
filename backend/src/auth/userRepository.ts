@@ -15,11 +15,20 @@ function toAuthUser(row: PrismaUser): AuthUser {
   };
 }
 
+export interface GithubConnection {
+  token: string;
+  scope: string;
+  connectedAt: Date;
+}
+
 export interface UserRepository {
   findById(id: string): Promise<AuthUser | null>;
   findByGithubId(githubId: string): Promise<AuthUser | null>;
   findByUsername(username: string): Promise<AuthUser | null>;
   upsertFromGithub(profile: GithubProfile): Promise<AuthUser>;
+  findGithubConnection(userId: string): Promise<GithubConnection | null>;
+  saveGithubConnection(userId: string, input: { token: string; scope: string }): Promise<void>;
+  clearGithubConnection(userId: string): Promise<void>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -40,6 +49,33 @@ export class PrismaUserRepository implements UserRepository {
       where: { username: { equals: username, mode: 'insensitive' } },
     });
     return row ? toAuthUser(row) : null;
+  }
+
+  async findGithubConnection(userId: string): Promise<GithubConnection | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { githubToken: true, githubScope: true, githubConnectedAt: true },
+    });
+    if (!row?.githubToken || !row.githubConnectedAt) return null;
+    return {
+      token: row.githubToken,
+      scope: row.githubScope ?? '',
+      connectedAt: row.githubConnectedAt,
+    };
+  }
+
+  async saveGithubConnection(userId: string, input: { token: string; scope: string }): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { githubToken: input.token, githubScope: input.scope, githubConnectedAt: new Date() },
+    });
+  }
+
+  async clearGithubConnection(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { githubToken: null, githubScope: null, githubConnectedAt: null },
+    });
   }
 
   async upsertFromGithub(profile: GithubProfile): Promise<AuthUser> {

@@ -20,6 +20,9 @@ interface EditorToolbarProps {
   historyOpen: boolean;
   onToggleChat: () => void;
   chatOpen: boolean;
+  onToggleGithub: () => void;
+  githubOpen: boolean;
+  showGithub?: boolean;
   onExport: () => void;
   exporting: boolean;
   readOnly?: boolean;
@@ -46,6 +49,9 @@ export function EditorToolbar({
   historyOpen,
   onToggleChat,
   chatOpen,
+  onToggleGithub,
+  githubOpen,
+  showGithub = false,
   onExport,
   exporting,
   readOnly = false,
@@ -120,6 +126,23 @@ export function EditorToolbar({
         </button>
       </div>
       <div style={{ flex: 1 }} />
+      {showGithub && (
+        <button
+          type="button"
+          onClick={onToggleGithub}
+          style={{
+            background: githubOpen ? '#334155' : '#1f2937',
+            color: '#e2e8f0',
+            border: '1px solid #334155',
+            borderRadius: 6,
+            padding: '6px 14px',
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          GitHub
+        </button>
+      )}
       <button
         type="button"
         onClick={onToggleChat}

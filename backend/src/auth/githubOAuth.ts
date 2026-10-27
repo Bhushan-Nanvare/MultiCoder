@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { config } from '@/config/index.js';
 import type { GithubProfile } from '@/auth/types.js';
+import { GITHUB_CONNECT_SCOPE } from '@/constants/index.js';
 import { AppError } from '@/utils/errors.js';
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
@@ -8,24 +9,43 @@ const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 const GITHUB_USER_URL = 'https://api.github.com/user';
 const GITHUB_EMAILS_URL = 'https://api.github.com/user/emails';
 
-const OAUTH_SCOPE = 'read:user user:email';
+const LOGIN_SCOPE = 'read:user user:email';
 
 export function generateOAuthState(): string {
   return randomBytes(24).toString('hex');
+}
+
+// GitHub accepts subdirectories of the registered callback, so repository
+// consent can land somewhere the login flow will not pick up.
+export function connectCallbackUrl(): string {
+  return `${config.oauthCallbackUrl}/connect`;
 }
 
 export function buildAuthorizeUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: config.githubClientId,
     redirect_uri: config.oauthCallbackUrl,
-    scope: OAUTH_SCOPE,
+    scope: LOGIN_SCOPE,
     state,
     allow_signup: 'true',
   });
   return `${GITHUB_AUTHORIZE_URL}?${params.toString()}`;
 }
 
-async function exchangeCodeForToken(code: string): Promise<string> {
+export function buildConnectUrl(state: string): string {
+  const params = new URLSearchParams({
+    client_id: config.githubClientId,
+    redirect_uri: connectCallbackUrl(),
+    scope: GITHUB_CONNECT_SCOPE,
+    state,
+  });
+  return `${GITHUB_AUTHORIZE_URL}?${params.toString()}`;
+}
+
+export async function exchangeCodeForToken(
+  code: string,
+  redirectUri: string = config.oauthCallbackUrl,
+): Promise<{ accessToken: string; scope: string }> {
   const response = await fetch(GITHUB_TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -36,7 +56,7 @@ async function exchangeCodeForToken(code: string): Promise<string> {
       client_id: config.githubClientId,
       client_secret: config.githubClientSecret,
       code,
-      redirect_uri: config.oauthCallbackUrl,
+      redirect_uri: redirectUri,
     }),
   });
   if (!response.ok) {
@@ -48,6 +68,7 @@ async function exchangeCodeForToken(code: string): Promise<string> {
   }
   const body = (await response.json()) as {
     access_token?: string;
+    scope?: string;
     error?: string;
     error_description?: string;
   };
@@ -58,7 +79,7 @@ async function exchangeCodeForToken(code: string): Promise<string> {
       'OAUTH_EXCHANGE_FAILED',
     );
   }
-  return body.access_token;
+  return { accessToken: body.access_token, scope: body.scope ?? '' };
 }
 
 interface GithubUserResponse {
@@ -92,7 +113,7 @@ async function fetchPrimaryEmail(token: string): Promise<string | null> {
 }
 
 export async function fetchGithubProfile(code: string): Promise<GithubProfile> {
-  const token = await exchangeCodeForToken(code);
+  const { accessToken: token } = await exchangeCodeForToken(code);
 
   const userRes = await fetch(GITHUB_USER_URL, {
     headers: {

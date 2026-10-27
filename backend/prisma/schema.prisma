@@ -32,6 +32,12 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  /// AES-256-GCM ciphertext of the GitHub OAuth token, set only when the user
+  /// connects a repository. Never read outside GithubService.
+  githubToken       String?
+  githubScope       String?
+  githubConnectedAt DateTime?
+
   rooms           Room[]
   snapshots       Snapshot[]
   snippets        Snippet[]

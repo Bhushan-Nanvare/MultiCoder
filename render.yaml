@@ -44,6 +44,10 @@ services:
         value: gemini
       - key: GEMINI_API_KEY
         sync: false
+      # 32 random bytes, base64. Encrypts stored GitHub tokens; leave unset to
+      # turn the repository import off.
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
       - key: GEMINI_MODEL
         value: gemini-flash-latest
       # Render can't run Piston (it needs a privileged container). Point this at
